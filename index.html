@@ -4,1020 +4,911 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Uus Fienta – MVP</title>
-
-  <!-- QR generator (client-side, works on Vercel) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
   <style>
     :root{
-      --bg:#070a12;
-      --card:#0e1424;
-      --card2:#0b1020;
-      --border:rgba(255,255,255,.09);
-      --text:#eaf2ff;
-      --muted:#9fb0c7;
-      --accent:#22c55e;
-      --accent2:#60a5fa;
-      --danger:#fb7185;
-      --warn:#fbbf24;
-      --shadow:0 14px 40px rgba(0,0,0,.45);
+      --bg:#f6f7fb;
+      --panel:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e6e8f0;
+      --blue:#2563eb;
+      --blue2:#1d4ed8;
+      --green:#16a34a;
+      --red:#ef4444;
+      --shadow:0 10px 30px rgba(15,23,42,.08);
       --r:18px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans";
+      --r2:14px;
+      --container:1160px;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans";
     }
     *{box-sizing:border-box}
-    body{
-      margin:0;color:var(--text);
-      background:
-        radial-gradient(900px 520px at 18% 0%, rgba(96,165,250,.18), transparent 55%),
-        radial-gradient(900px 520px at 85% 18%, rgba(34,197,94,.14), transparent 55%),
-        var(--bg);
-    }
-    a{color:inherit}
-    .wrap{max-width:1120px;margin:0 auto;padding:16px}
-    header{
-      position:sticky;top:0;z-index:20;
-      background:rgba(7,10,18,.7);
+    body{margin:0;background:var(--bg);color:var(--text)}
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:var(--container);margin:0 auto;padding:0 18px}
+    .topbar{
+      position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);
       backdrop-filter: blur(10px);
-      border-bottom:1px solid var(--border);
+      border-bottom:1px solid var(--line);
     }
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .brand{display:flex;align-items:center;gap:10px;min-width:260px}
-    .logo{
-      width:38px;height:38px;border-radius:12px;
-      background:linear-gradient(135deg,var(--accent),var(--accent2));
-      box-shadow:var(--shadow);
+    .topbar .inner{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.02em}
+    .brand .logo{
+      width:34px;height:34px;border-radius:10px;
+      background:linear-gradient(135deg,#60a5fa,#2563eb,#22c55e);
+      box-shadow:0 10px 26px rgba(37,99,235,.25);
     }
-    .brand b{display:block;font-size:14px}
-    .brand small{display:block;color:var(--muted);margin-top:2px}
-    .nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .nav{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .nav a{font-weight:700;color:#0f172a;opacity:.85}
+    .nav a:hover{opacity:1}
+    .actions{display:flex;align-items:center;gap:10px}
     .btn{
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.03);
-      color:var(--text);
-      padding:10px 12px;border-radius:14px;
-      cursor:pointer;transition:.18s transform,.18s background,.18s border;
-      font-weight:700;font-size:13px;
+      border:1px solid var(--line);background:var(--panel);color:var(--text);
+      padding:10px 14px;border-radius:12px;font-weight:800;cursor:pointer;
+      transition:.15s transform,.15s box-shadow,.15s border;
     }
-    .btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
-    .btn.primary{background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.35)}
-    .btn.danger{background:rgba(251,113,133,.10);border-color:rgba(251,113,133,.35)}
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+    .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .btn.primary:hover{background:var(--blue2);border-color:var(--blue2)}
     .btn.ghost{background:transparent}
-    .pill{
-      display:inline-flex;gap:8px;align-items:center;
-      padding:7px 10px;border-radius:999px;border:1px solid var(--border);
-      background:rgba(255,255,255,.03);
-      color:var(--muted);font-size:12px
+    .select{
+      border:1px solid var(--line);background:var(--panel);border-radius:12px;
+      padding:10px 12px;font-weight:800;
     }
-    .dot{width:8px;height:8px;border-radius:999px;background:var(--accent)}
-    .dot.bad{background:var(--danger)}
-    .dot.warn{background:var(--warn)}
+
+    /* HERO SEARCH (Fienta-like) */
     .hero{
-      margin-top:14px;border:1px solid var(--border);background:rgba(255,255,255,.03);
-      border-radius:var(--r);box-shadow:var(--shadow);
+      padding:44px 0 24px;
+      background:
+        radial-gradient(800px 420px at 20% 0%, rgba(37,99,235,.10), transparent 55%),
+        radial-gradient(900px 520px at 85% 10%, rgba(34,197,94,.10), transparent 55%);
+    }
+    .hero h1{
+      margin:0;text-align:center;font-size:48px;letter-spacing:-.03em;
+      font-weight:950;
+    }
+    .hero .langline{margin-top:8px;text-align:center;color:var(--muted);font-weight:700}
+    .searchwrap{
+      margin:20px auto 0;
+      max-width:880px;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      display:flex;align-items:stretch;overflow:hidden;
+    }
+    .searchwrap .seg{
+      display:flex;align-items:center;gap:10px;flex:1;padding:12px 14px;
+    }
+    .searchwrap .seg + .seg{border-left:1px solid var(--line)}
+    .ico{width:18px;height:18px;opacity:.55}
+    .searchwrap input{
+      border:0;outline:0;width:100%;
+      font-size:15px;font-weight:700;color:var(--text);
+    }
+    .searchwrap input::placeholder{color:#94a3b8;font-weight:700}
+    .searchwrap .go{
+      padding:0 18px;display:flex;align-items:center;justify-content:center;
+      background:var(--blue);color:#fff;font-weight:950;border:0;cursor:pointer;
+      min-width:110px;
+    }
+    .searchwrap .go:hover{background:var(--blue2)}
+    .filters{
+      margin:14px auto 0;max-width:880px;
+      display:flex;gap:10px;flex-wrap:wrap;justify-content:center;
+    }
+    .pill{
+      border:1px solid var(--line);background:rgba(255,255,255,.75);
+      padding:9px 12px;border-radius:999px;font-weight:900;color:#334155;
+      cursor:pointer;user-select:none;
+      transition:.15s transform,.15s background,.15s border;
+    }
+    .pill:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+    .pill.active{border-color:rgba(37,99,235,.45);background:rgba(37,99,235,.08);color:#1e3a8a}
+
+    /* GRID */
+    .sectionhead{
+      display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+      padding:18px 0 12px;
+    }
+    .sectionhead h2{margin:0;font-size:18px;letter-spacing:-.02em}
+    .sectionhead .small{color:var(--muted);font-weight:800;font-size:13px}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:18px;
+      padding-bottom:40px;
+    }
+    @media (max-width: 1040px){ .grid{grid-template-columns:repeat(2,1fr)} .hero h1{font-size:40px}}
+    @media (max-width: 640px){
+      .grid{grid-template-columns:1fr}
+      .hero h1{font-size:34px}
+      .searchwrap{flex-direction:column}
+      .searchwrap .seg + .seg{border-left:0;border-top:1px solid var(--line)}
+      .searchwrap .go{min-height:48px}
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 12px 34px rgba(15,23,42,.06);
+      transition:.16s transform,.16s box-shadow,.16s border;
+      cursor:pointer;
+    }
+    .card:hover{transform:translateY(-2px);box-shadow:0 18px 48px rgba(15,23,42,.10);border-color:rgba(37,99,235,.25)}
+    .thumb{
+      aspect-ratio: 16 / 9;
+      background:#0f172a;
+      position:relative;
       overflow:hidden;
     }
-    .hero-inner{
-      padding:18px;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(96,165,250,.18), transparent 40%),
-        radial-gradient(circle at 75% 30%, rgba(34,197,94,.14), transparent 45%);
+    .thumb img{
+      width:100%;height:100%;object-fit:cover;display:block;
+      transform:scale(1.02);
     }
-    h1,h2,h3{margin:0}
-    .hero h2{font-size:26px;margin-bottom:6px}
-    .hero p{margin:0;color:var(--muted);max-width:860px;line-height:1.5}
-    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-top:16px}
-    @media (max-width: 960px){.grid{grid-template-columns:1fr}}
+    .badge{
+      position:absolute;left:12px;top:12px;
+      background:rgba(255,255,255,.92);
+      border:1px solid var(--line);
+      padding:7px 10px;border-radius:999px;font-weight:950;font-size:12px;
+      box-shadow:var(--shadow);
+    }
+    .content{padding:14px 14px 16px}
+    .title{font-weight:950;letter-spacing:-.02em;margin:0 0 8px;font-size:16px}
+    .meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-weight:800;font-size:13px}
+    .priceRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+    .price{font-weight:950}
+    .cta{
+      font-weight:950;color:var(--blue);
+      display:flex;align-items:center;gap:8px;
+    }
+    .cta span{opacity:.9}
+    .cta svg{width:16px;height:16px}
+
+    /* EVENT PAGE */
+    .page{display:none}
+    .page.active{display:block}
+    .eventHero{
+      margin-top:18px;
+      border-radius:22px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:#0f172a;
+      box-shadow:var(--shadow);
+      position:relative;
+    }
+    .eventHero img{width:100%;height:360px;object-fit:cover;display:block}
+    @media (max-width:640px){.eventHero img{height:260px}}
+    .eventHero .overlay{
+      position:absolute;inset:0;
+      background:linear-gradient(to top, rgba(15,23,42,.78), rgba(15,23,42,.08) 60%, rgba(15,23,42,0));
+    }
+    .eventHero .info{
+      position:absolute;left:18px;right:18px;bottom:16px;
+      color:#fff;
+      display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;
+    }
+    .eventHero h1{margin:0;font-size:30px;letter-spacing:-.03em;font-weight:950}
+    .eventHero .sub{color:rgba(255,255,255,.86);font-weight:800}
+    .eventLayout{
+      display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:18px;padding-bottom:44px;
+    }
+    @media (max-width: 980px){.eventLayout{grid-template-columns:1fr}}
     .panel{
-      border:1px solid var(--border);background:rgba(255,255,255,.03);
-      border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 12px 34px rgba(15,23,42,.06);
     }
-    .hd{padding:14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .hd b{font-size:14px}
-    .hd small{color:var(--muted)}
-    .bd{padding:14px}
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width: 560px){.split{grid-template-columns:1fr}}
-    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
-    input, select, textarea{
-      width:100%;padding:11px 12px;border-radius:14px;
-      border:1px solid var(--border);
-      background:rgba(0,0,0,.25);
-      color:var(--text);
-      outline:none;
+    .panel .ph{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+    .panel .ph b{font-weight:950}
+    .panel .pb{padding:16px}
+    .desc{color:#334155;font-weight:700;line-height:1.55;margin:0}
+    .kvs{display:grid;gap:10px;margin-top:14px}
+    .kv{
+      display:flex;justify-content:space-between;gap:12px;align-items:flex-start;
+      padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fafbff;
+      font-weight:800;color:#334155;
     }
-    textarea{min-height:92px;resize:vertical}
-    .cards{display:grid;gap:12px}
-    .card{
-      background:rgba(14,20,36,.72);
-      border:1px solid var(--border);
-      border-radius:16px;padding:14px;
-      cursor:pointer;transition:.18s transform,.18s border;
+    .kv span{color:var(--muted);font-weight:900}
+    .ticketBox{position:sticky;top:86px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .field label{display:block;font-size:12px;color:var(--muted);font-weight:900;margin:0 0 6px}
+    .field input, .field select{
+      width:100%;padding:11px 12px;border-radius:14px;border:1px solid var(--line);
+      outline:0;background:#fff;font-weight:900;color:#0f172a;
     }
-    .card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
-    .row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
-    .tag{
-      font-size:12px;color:var(--muted);
-      border:1px solid var(--border);padding:6px 10px;border-radius:999px;
-      background:rgba(255,255,255,.03)
+    .sum{
+      margin-top:12px;
+      padding:12px;border:1px solid var(--line);border-radius:14px;background:#fafbff;
+      display:flex;align-items:center;justify-content:space-between;font-weight:950;
     }
-    .meta{display:flex;gap:8px;flex-wrap:wrap}
-    .title{font-size:16px;margin:8px 0 6px}
-    .desc{margin:0;color:var(--muted);font-size:13px;line-height:1.35}
-    .price{font-weight:900}
-    .hint{color:var(--muted);font-size:12px;line-height:1.5;margin-top:10px}
-    .hr{height:1px;background:var(--border);margin:12px 0}
+    .note{margin-top:10px;color:var(--muted);font-weight:800;font-size:12px;line-height:1.5}
+    .divider{height:1px;background:var(--line);margin:14px 0}
+    .status{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:7px 10px;border-radius:999px;font-weight:950;font-size:12px;border:1px solid var(--line);
+      background:#fafbff;color:#334155;
+    }
+    .dot{width:8px;height:8px;border-radius:99px;background:var(--green)}
+    .dot.used{background:var(--red)}
+
+    /* TICKET PAGE */
+    .ticketWrap{padding-bottom:40px}
+    .ticketTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px}
+    .tokenBox{
+      margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:18px;background:#fff;
+      display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;
+      box-shadow:var(--shadow);
+    }
+    .tokenBox canvas{background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px}
+    .tok{font-weight:950;word-break:break-all}
     .toast{
       position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
-      background:rgba(14,20,36,.95);
-      border:1px solid var(--border);
-      padding:12px 14px;border-radius:14px;box-shadow:var(--shadow);
-      max-width:92vw;display:flex;gap:10px;align-items:center;
+      background:#0f172a;color:#fff;padding:12px 14px;border-radius:14px;
+      box-shadow:0 18px 48px rgba(15,23,42,.25);
+      font-weight:900;max-width:92vw;z-index:100;
     }
     .hidden{display:none!important}
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size:12px;color:var(--muted);
-      border:1px solid var(--border);padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.03)
-    }
-    .qrbox{
-      display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;
-      border:1px solid var(--border);background:rgba(255,255,255,.03);
-      border-radius:16px;padding:12px
-    }
-    .qrbox canvas{background:#fff;border-radius:10px;padding:6px}
-    .badge{
-      display:inline-flex;align-items:center;gap:8px;
-      border-radius:999px;padding:7px 10px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.03);
-      font-size:12px;color:var(--muted)
-    }
-    .badge.ok{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:#c7f9d9}
-    .badge.bad{border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.08);color:#ffd0d8}
-    .badge.warn{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08);color:#ffe9b5}
+    .smallbtn{padding:10px 12px;border-radius:12px;font-weight:950;border:1px solid var(--line);background:#fff;cursor:pointer}
+    .smallbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+    .smallbtn.primary:hover{background:var(--blue2);border-color:var(--blue2)}
   </style>
 </head>
 
 <body>
-<header>
-  <div class="wrap top">
-    <div class="brand">
-      <div class="logo" aria-hidden="true"></div>
-      <div>
-        <b>Uus Fienta – MVP</b>
-        <small>Piletimüük + QR piletid + check-in (demo, ilma serverita)</small>
+  <div class="topbar">
+    <div class="wrap inner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>uus-finta</div>
       </div>
-    </div>
-    <div class="nav">
-      <button class="btn primary" id="navHome">Avaleht</button>
-      <button class="btn" id="navOrganizer">Korraldaja</button>
-      <button class="btn" id="navCheckin">Check-in</button>
-      <button class="btn danger" id="navReset">Reset demo</button>
+      <div class="nav">
+        <a href="#home">Avaleht</a>
+        <a href="#organizer">Korraldajale</a>
+        <a href="#help">Abi</a>
+      </div>
+      <div class="actions">
+        <select class="select" id="lang">
+          <option value="et" selected>ET</option>
+          <option value="en">EN</option>
+        </select>
+        <button class="btn ghost" id="btnSignup">Loo konto</button>
+        <button class="btn" id="btnLogin">Logi sisse</button>
+      </div>
     </div>
   </div>
-</header>
 
-<main class="wrap">
-  <section class="hero">
-    <div class="hero-inner">
-      <h2 id="pageTitle">Üritused</h2>
-      <p id="pageSub">Vali üritus, osta demo-pilet, ava digipilet tokeniga ja testi check-in’i.</p>
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-        <span class="pill"><span class="dot"></span> Töötab kohe Vercelis</span>
-        <span class="pill"><span class="dot warn"></span> Andmed LocalStorage’is (demo)</span>
-        <span class="pill"><span class="dot"></span> QR + ticket token</span>
-        <span class="pill">Korraldaja PIN: <span class="kbd">1234</span></span>
-      </div>
-    </div>
-  </section>
+  <!-- HOME -->
+  <div class="page active" id="pageHome">
+    <div class="hero">
+      <div class="wrap">
+        <h1>Leia oma elamus</h1>
+        <div class="langline">Eesti ▾</div>
 
-  <section class="grid">
-
-    <!-- LEFT -->
-    <div class="panel">
-      <div class="hd">
-        <b id="leftTitle">Ürituste nimekiri</b>
-        <small id="leftHint">Kliki kaardile</small>
-      </div>
-      <div class="bd">
-
-        <!-- HOME VIEW -->
-        <div id="viewHome">
-          <div class="split" style="margin-bottom:12px">
-            <div>
-              <label>Otsi</label>
-              <input id="search" placeholder="Nt: kontsert, festival, standup…" />
-            </div>
-            <div>
-              <label>Sorteeri</label>
-              <select id="sort">
-                <option value="time_asc">Aeg (varasem enne)</option>
-                <option value="time_desc">Aeg (hilisem enne)</option>
-                <option value="price_asc">Hind (odavam enne)</option>
-                <option value="price_desc">Hind (kallim enne)</option>
-              </select>
-            </div>
+        <div class="searchwrap" role="search" aria-label="Ürituste otsing">
+          <div class="seg">
+            <svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="q" placeholder="Üritus, korraldaja, koht" />
           </div>
-          <div class="cards" id="eventCards"></div>
-          <div class="hint">
-            See on “kõik ühes failis” demo. Järgmine samm (kui tahad päriseks): Supabase (mitme kasutaja andmed) + Stripe/Montonio.
+          <div class="seg" style="max-width:240px">
+            <svg class="ico" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-4.35 7-11a7 7 0 1 0-14 0c0 6.65 7 11 7 11Z" stroke="currentColor" stroke-width="2"/><path d="M12 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" stroke="currentColor" stroke-width="2"/></svg>
+            <input id="city" placeholder="tartu" value="tartu" />
           </div>
+          <button class="go" id="doSearch">Otsi</button>
         </div>
 
-        <!-- EVENT VIEW -->
-        <div id="viewEvent" class="hidden">
-          <div class="meta" id="eventMeta"></div>
-          <h3 class="title" id="eventTitle"></h3>
-          <p class="desc" id="eventDesc"></p>
-
-          <div class="split" style="margin-top:14px">
-            <div class="panel" style="border-radius:16px">
-              <div class="hd"><b>Osta pilet</b><small>demo makse</small></div>
-              <div class="bd">
-                <label>Piletitüüp</label>
-                <select id="ticketType"></select>
-
-                <div class="split" style="margin-top:10px">
-                  <div>
-                    <label>Kogus</label>
-                    <input id="qty" type="number" min="1" value="1" />
-                  </div>
-                  <div>
-                    <label>Kokku</label>
-                    <input id="total" disabled />
-                  </div>
-                </div>
-
-                <div class="split" style="margin-top:10px">
-                  <div>
-                    <label>Ostja nimi</label>
-                    <input id="buyerName" placeholder="Nt: Mark" />
-                  </div>
-                  <div>
-                    <label>Ostja email</label>
-                    <input id="buyerEmail" placeholder="nt: mark@email.com" />
-                  </div>
-                </div>
-
-                <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-                  <button class="btn primary" id="payBtn">Maksa (demo)</button>
-                  <button class="btn" id="backBtn">Tagasi</button>
-                </div>
-                <div class="hint">“Maksa” loob tellimuse + genereerib piletid tokenitega + vähendab saadavust.</div>
-              </div>
-            </div>
-
-            <div class="panel" style="border-radius:16px">
-              <div class="hd"><b>Saadavus</b><small>reaalajas demo</small></div>
-              <div class="bd" id="availability"></div>
-            </div>
-          </div>
-
-          <div class="panel" style="border-radius:16px;margin-top:14px">
-            <div class="hd"><b>Tellimused (selle ürituse)</b><small>kohalikus brauseris</small></div>
-            <div class="bd" id="orders"></div>
-          </div>
+        <div class="filters" aria-label="Filtrid">
+          <div class="pill active" data-filter="all">Kõik</div>
+          <div class="pill" data-filter="today">Täna</div>
+          <div class="pill" data-filter="tomorrow">Homme</div>
+          <div class="pill" data-filter="weekend">Nädalavahetus</div>
+          <div class="pill" data-filter="music">Muusika</div>
+          <div class="pill" data-filter="theatre">Teater</div>
+          <div class="pill" data-filter="festival">Festival</div>
+          <div class="pill" data-filter="family">Kogupere</div>
         </div>
-
-        <!-- TICKET VIEW -->
-        <div id="viewTicket" class="hidden">
-          <div class="row">
-            <div class="meta" id="ticketMeta"></div>
-            <div id="ticketStatus"></div>
-          </div>
-          <h3 class="title" id="ticketTitle"></h3>
-          <p class="desc" id="ticketText"></p>
-
-          <div class="qrbox" style="margin-top:12px">
-            <div>
-              <div class="tag">QR</div>
-              <canvas id="qrCanvas" width="200" height="200"></canvas>
-            </div>
-            <div style="min-width:240px;flex:1">
-              <div class="tag">Token</div>
-              <div style="margin-top:8px;font-weight:900;word-break:break-all" id="ticketToken"></div>
-              <div class="hint">Check-in lehel sisesta token või skanni QR.</div>
-              <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn primary" id="printBtn">Prindi / Salvesta PDF</button>
-                <button class="btn" id="ticketBackBtn">Tagasi</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ORGANIZER VIEW -->
-        <div id="viewOrganizer" class="hidden">
-          <div class="panel" style="border-radius:16px">
-            <div class="hd"><b>Korraldaja</b><small>sisene PIN-iga</small></div>
-            <div class="bd">
-              <div class="split">
-                <div>
-                  <label>PIN (demo)</label>
-                  <input id="orgPin" placeholder="1234" />
-                  <div class="hint">Demo PIN on <span class="kbd">1234</span>. Hiljem teeme päris login’i.</div>
-                </div>
-                <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
-                  <button class="btn primary" id="orgLoginBtn">Sisene</button>
-                  <button class="btn" id="orgLogoutBtn">Välju</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div id="orgArea" class="hidden">
-            <div class="panel" style="border-radius:16px;margin-top:14px">
-              <div class="hd"><b>Lisa üritus</b><small>täida ja salvesta</small></div>
-              <div class="bd">
-                <div class="split">
-                  <div>
-                    <label>Ürituse nimi</label>
-                    <input id="aTitle" placeholder="Nt: Raadi Standup Õhtu" />
-                  </div>
-                  <div>
-                    <label>Kuupäev ja kellaaeg</label>
-                    <input id="aTime" type="datetime-local" />
-                  </div>
-                </div>
-                <div class="split" style="margin-top:10px">
-                  <div>
-                    <label>Asukoht</label>
-                    <input id="aLoc" placeholder="Nt: Tartu / Raadi" />
-                  </div>
-                  <div>
-                    <label>Kategooria</label>
-                    <input id="aCat" placeholder="Nt: Kontsert / Festival" />
-                  </div>
-                </div>
-                <div style="margin-top:10px">
-                  <label>Kirjeldus</label>
-                  <textarea id="aDesc" placeholder="Kirjelda üritust…"></textarea>
-                </div>
-
-                <div class="hr"></div>
-                <b style="display:block;margin-bottom:8px">Piletitüübid</b>
-
-                <div class="split">
-                  <div>
-                    <label>Tüüp</label>
-                    <input id="t1Name" value="Tavapilet" />
-                  </div>
-                  <div>
-                    <label>Hind (€)</label>
-                    <input id="t1Price" type="number" value="15" />
-                  </div>
-                </div>
-                <div class="split" style="margin-top:10px">
-                  <div>
-                    <label>Kogus</label>
-                    <input id="t1Qty" type="number" value="100" />
-                  </div>
-                  <div>
-                    <label>—</label>
-                    <input value="Esimene piletitüüp" disabled />
-                  </div>
-                </div>
-
-                <div class="hr"></div>
-
-                <div class="split">
-                  <div>
-                    <label>Tüüp</label>
-                    <input id="t2Name" value="VIP" />
-                  </div>
-                  <div>
-                    <label>Hind (€)</label>
-                    <input id="t2Price" type="number" value="35" />
-                  </div>
-                </div>
-                <div class="split" style="margin-top:10px">
-                  <div>
-                    <label>Kogus</label>
-                    <input id="t2Qty" type="number" value="20" />
-                  </div>
-                  <div>
-                    <label>—</label>
-                    <input value="Teine piletitüüp (valikuline)" disabled />
-                  </div>
-                </div>
-
-                <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-                  <button class="btn primary" id="saveEvent">Salvesta üritus</button>
-                  <button class="btn danger" id="deleteAllOrders">Kustuta kõik tellimused</button>
-                </div>
-                <div class="hint">Korraldaja vaates saad lisada üritusi ja vaadata tellimusi. Demo-s on kõik andmed brauseris.</div>
-              </div>
-            </div>
-
-            <div class="panel" style="border-radius:16px;margin-top:14px">
-              <div class="hd"><b>Kõik tellimused</b><small>export (copy)</small></div>
-              <div class="bd" id="allOrders"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CHECKIN VIEW -->
-        <div id="viewCheckin" class="hidden">
-          <div class="panel" style="border-radius:16px">
-            <div class="hd"><b>Check-in</b><small>sisesta token või skanni QR</small></div>
-            <div class="bd">
-              <div class="split">
-                <div>
-                  <label>Vali üritus</label>
-                  <select id="checkinEvent"></select>
-                </div>
-                <div>
-                  <label>Token</label>
-                  <input id="checkinToken" placeholder="Kleebi token siia…" />
-                </div>
-              </div>
-              <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn primary" id="checkBtn">Kontrolli / Märgi USED</button>
-                <button class="btn" id="checkinBackBtn">Tagasi</button>
-              </div>
-              <div class="hint">
-                Telefonis: kui QR avab lingi <span class="kbd">#ticket=TOKEN</span>, saad tokeni siia paste’ida.
-                Järgmises etapis lisame päris kaamera skänni (PWA).
-              </div>
-              <div class="hr"></div>
-              <div id="checkinResult"></div>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
 
-    <!-- RIGHT -->
-    <aside class="panel">
-      <div class="hd"><b>Mis see on?</b><small>“kõik-ühes” demo</small></div>
-      <div class="bd" style="color:var(--muted);line-height:1.55">
-        <div class="badge warn" style="margin-bottom:10px">Demo: andmed on ainult sinu brauseris</div>
-        <div style="margin-bottom:10px">
-          Kui tahad päris platvormi (nagu Fienta):
-          <ul style="margin:8px 0 0;padding-left:18px">
-            <li>Supabase (andmebaas + kasutajad)</li>
-            <li>Stripe / Montonio (päris maksed)</li>
-            <li>Email piletitega</li>
-            <li>Päris check-in skänner (kaamera)</li>
-          </ul>
-        </div>
-        <div class="hr"></div>
-        <div><b style="color:var(--text)">Kiirnipp:</b> testi nii:</div>
-        <ol style="margin:8px 0 0;padding-left:18px">
-          <li>osta demo pilet</li>
-          <li>ava pilet (token)</li>
-          <li>mine Check-in → sisesta token → märgi USED</li>
-        </ol>
+    <div class="wrap">
+      <div class="sectionhead">
+        <h2>Vali üritusi</h2>
+        <div class="small" id="countText"></div>
       </div>
-    </aside>
+      <div class="grid" id="eventGrid"></div>
+    </div>
+  </div>
 
-  </section>
-
-  <footer class="wrap" style="color:var(--muted);text-align:center;padding:24px 16px;font-size:12px">
-    © Uus Fienta • MVP demo • Vercel-ready
-  </footer>
-</main>
-
-<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-
-<script>
-  // ---------- tiny helpers ----------
-  const $ = (s)=>document.querySelector(s);
-  const uid = ()=>crypto.getRandomValues(new Uint32Array(4)).join("-")+"-"+Date.now().toString(16);
-  const token = ()=>{
-    const a = new Uint8Array(24);
-    crypto.getRandomValues(a);
-    return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join("");
-  };
-  const money = (n)=>new Intl.NumberFormat("et-EE",{style:"currency",currency:"EUR"}).format(n);
-  const fmtDate = (iso)=>{
-    const d = new Date(iso);
-    return d.toLocaleString("et-EE",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
-  };
-
-  const toast = $("#toast");
-  const showToast=(msg)=>{
-    toast.textContent = msg;
-    toast.classList.remove("hidden");
-    setTimeout(()=>toast.classList.add("hidden"), 2400);
-  };
-
-  // ---------- storage ----------
-  const KEY="uus_fienta_mvp_v1";
-  const load=()=>{ try{ return JSON.parse(localStorage.getItem(KEY)||""); }catch{ return null; } };
-  const save=(d)=>localStorage.setItem(KEY, JSON.stringify(d));
-
-  const seed=()=>{
-    const now=new Date();
-    const addDays=(n)=>new Date(now.getTime()+n*86400000).toISOString();
-    const d={
-      events:[
-        {
-          id:uid(),
-          title:"Raadi Standup Õhtu",
-          time:addDays(7),
-          location:"Tartu / Raadi",
-          category:"Standup",
-          desc:"Õhtu täis head huumorit. Uksed 19:00, show 20:00.",
-          tickets:[
-            {id:uid(), name:"Tavapilet", price:12, total:120, sold:0},
-            {id:uid(), name:"VIP", price:25, total:25, sold:0},
-          ]
-        },
-        {
-          id:uid(),
-          title:"Kevadine Autohuviliste Kokkutulek",
-          time:addDays(14),
-          location:"Tartu / Raadi lennuväli",
-          category:"Festival",
-          desc:"Autod, muusika ja foodtruckid. Pere- ja koerasõbralik.",
-          tickets:[
-            {id:uid(), name:"Päevapilet", price:8, total:300, sold:0},
-            {id:uid(), name:"Perepilet", price:18, total:80, sold:0},
-          ]
-        }
-      ],
-      orders:[],
-      issued:[], // {id, orderId, eventId, ticketTypeId, token, usedAt|null, createdAt}
-      organizer:{authed:false}
-    };
-    save(d);
-    return d;
-  };
-
-  let data = load() || seed();
-  let selectedEventId = null;
-  let currentTicketToken = null;
-
-  // ---------- views ----------
-  const views = {
-    home: $("#viewHome"),
-    event: $("#viewEvent"),
-    ticket: $("#viewTicket"),
-    organizer: $("#viewOrganizer"),
-    checkin: $("#viewCheckin")
-  };
-  const showView = (name)=>{
-    Object.values(views).forEach(v=>v.classList.add("hidden"));
-    views[name].classList.remove("hidden");
-  };
-
-  // ---------- header text ----------
-  const pageTitle=$("#pageTitle");
-  const pageSub=$("#pageSub");
-  const leftTitle=$("#leftTitle");
-  const leftHint=$("#leftHint");
-
-  // ---------- render home ----------
-  const eventCards=$("#eventCards");
-
-  const listEvents=()=>{
-    const q=($("#search").value||"").toLowerCase().trim();
-    const sort=$("#sort").value;
-
-    let items = data.events
-      .filter(ev => (ev.title+ev.location+ev.category+ev.desc).toLowerCase().includes(q))
-      .map(ev=>{
-        const minPrice=Math.min(...ev.tickets.map(t=>t.price));
-        const remaining=ev.tickets.reduce((s,t)=>s+(t.total-t.sold),0);
-        return {...ev, minPrice, remaining};
-      });
-
-    items.sort((a,b)=>{
-      if(sort==="time_asc") return new Date(a.time)-new Date(b.time);
-      if(sort==="time_desc") return new Date(b.time)-new Date(a.time);
-      if(sort==="price_asc") return a.minPrice-b.minPrice;
-      if(sort==="price_desc") return b.minPrice-a.minPrice;
-      return 0;
-    });
-
-    eventCards.innerHTML="";
-    if(!items.length){
-      eventCards.innerHTML = `<div class="card" style="cursor:default">
-        <div class="row"><span class="tag">Tulemus</span><span class="tag">0</span></div>
-        <h3 class="title">Üritusi ei leitud</h3>
-        <p class="desc">Proovi teistsugust otsingusõna.</p>
-      </div>`;
-      return;
-    }
-
-    for(const ev of items){
-      const soldOut = ev.remaining<=0;
-      const status = soldOut ? "Välja müüdud" : `${ev.remaining} piletit alles`;
-      const dotClass = soldOut ? "dot bad" : "dot";
-      const card=document.createElement("div");
-      card.className="card";
-      card.innerHTML=`
-        <div class="row">
-          <div class="meta">
-            <span class="tag">${ev.category}</span>
-            <span class="tag">${fmtDate(ev.time)}</span>
-            <span class="tag">${ev.location}</span>
-          </div>
-          <span class="pill"><span class="${dotClass}"></span> ${status}</span>
-        </div>
-        <h3 class="title">${ev.title}</h3>
-        <p class="desc">${ev.desc}</p>
-        <div class="row" style="margin-top:10px">
-          <span class="price">Al. ${money(ev.minPrice)}</span>
-          <span class="tag">Vaata & Osta →</span>
-        </div>
-      `;
-      card.addEventListener("click", ()=>openEvent(ev.id));
-      eventCards.appendChild(card);
-    }
-  };
-
-  const openHome=()=>{
-    selectedEventId=null;
-    pageTitle.textContent="Üritused";
-    pageSub.textContent="Vali üritus, osta demo-pilet, ava digipilet tokeniga ja testi check-in’i.";
-    leftTitle.textContent="Ürituste nimekiri";
-    leftHint.textContent="Kliki kaardile";
-    showView("home");
-    listEvents();
-    renderCheckinEventSelect();
-  };
-
-  // ---------- event view ----------
-  const ticketType=$("#ticketType");
-  const qty=$("#qty");
-  const total=$("#total");
-  const buyerName=$("#buyerName");
-  const buyerEmail=$("#buyerEmail");
-  const availability=$("#availability");
-  const ordersBox=$("#orders");
-
-  const openEvent=(id)=>{
-    selectedEventId=id;
-    const ev=data.events.find(e=>e.id===id);
-    if(!ev) return;
-
-    pageTitle.textContent=ev.title;
-    pageSub.textContent=`${fmtDate(ev.time)} • ${ev.location}`;
-    leftTitle.textContent="Ürituse detail";
-    leftHint.textContent="Osta demo-pilet";
-    showView("event");
-
-    const minPrice=Math.min(...ev.tickets.map(t=>t.price));
-    $("#eventMeta").innerHTML=`
-      <span class="tag">${ev.category}</span>
-      <span class="tag">Al. ${money(minPrice)}</span>
-      <span class="tag">${fmtDate(ev.time)}</span>
-      <span class="tag">${ev.location}</span>
-    `;
-    $("#eventTitle").textContent=ev.title;
-    $("#eventDesc").textContent=ev.desc;
-
-    ticketType.innerHTML = ev.tickets.map(t=>{
-      const rem=t.total-t.sold;
-      const disabled = rem<=0 ? "disabled" : "";
-      return `<option value="${t.id}" ${disabled}>${t.name} • ${money(t.price)} • ${rem} alles</option>`;
-    }).join("");
-
-    buyerName.value = buyerName.value || "Demo Ostja";
-    buyerEmail.value = buyerEmail.value || "";
-    qty.value=1;
-    calcTotal();
-    renderAvailability();
-    renderOrders();
-  };
-
-  const calcTotal=()=>{
-    const ev=data.events.find(e=>e.id===selectedEventId);
-    if(!ev) return;
-    const t=ev.tickets.find(x=>x.id===ticketType.value) || ev.tickets[0];
-    const q=Math.max(1, parseInt(qty.value||"1",10));
-    qty.value=q;
-    total.value = money(t.price*q);
-  };
-
-  const renderAvailability=()=>{
-    const ev=data.events.find(e=>e.id===selectedEventId);
-    if(!ev) return;
-    availability.innerHTML = ev.tickets.map(t=>{
-      const rem=t.total-t.sold;
-      const cls = rem<=0 ? "dot bad" : "dot";
-      return `<div class="row" style="margin-bottom:10px">
-        <span class="tag">${t.name}</span>
-        <span class="pill"><span class="${cls}"></span> ${rem} / ${t.total}</span>
-      </div>`;
-    }).join("");
-  };
-
-  const renderOrders=()=>{
-    const ev=data.events.find(e=>e.id===selectedEventId);
-    if(!ev) return;
-    const orders=data.orders.filter(o=>o.eventId===selectedEventId).slice(-10).reverse();
-    if(!orders.length){
-      ordersBox.innerHTML=`<p class="desc">Tellimusi veel pole.</p>`;
-      return;
-    }
-    ordersBox.innerHTML = orders.map(o=>`
-      <div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-weight:800">${o.buyerName}</div>
-          <div class="hint">${fmtDate(o.createdAt)} • ${o.ticketName} × ${o.qty}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-weight:900">${money(o.total)}</div>
-          <div class="hint">Order: ${o.id.slice(-8)}</div>
-        </div>
-      </div>
-    `).join("");
-  };
-
-  // ---------- buy (demo payment) ----------
-  const pay=()=>{
-    const ev=data.events.find(e=>e.id===selectedEventId);
-    if(!ev) return;
-    const t=ev.tickets.find(x=>x.id===ticketType.value);
-    if(!t) return;
-
-    const q=Math.max(1, parseInt(qty.value||"1",10));
-    const rem=t.total-t.sold;
-    if(q>rem){ showToast("Pole piisavalt pileteid."); return; }
-
-    const bName=(buyerName.value||"").trim() || "Ostja";
-    const bEmail=(buyerEmail.value||"").trim();
-
-    // decrease inventory
-    t.sold += q;
-
-    // create order
-    const orderId=uid();
-    const totalAmount=t.price*q;
-    const order = {
-      id: orderId,
-      eventId: ev.id,
-      createdAt: new Date().toISOString(),
-      buyerName: bName,
-      buyerEmail: bEmail,
-      ticketTypeId: t.id,
-      ticketName: t.name,
-      qty: q,
-      total: totalAmount,
-      status: "paid_demo"
-    };
-    data.orders.push(order);
-
-    // issue tickets
-    const issuedTokens=[];
-    for(let i=0;i<q;i++){
-      const tok=token();
-      data.issued.push({
-        id: uid(),
-        orderId,
-        eventId: ev.id,
-        ticketTypeId: t.id,
-        token: tok,
-        usedAt: null,
-        createdAt: new Date().toISOString(),
-        buyerName: bName,
-        buyerEmail: bEmail
-      });
-      issuedTokens.push(tok);
-    }
-
-    save(data);
-    showToast("Ost tehtud (demo)! Piletid loodud.");
-
-    // open first ticket
-    openTicket(issuedTokens[0]);
-    listEvents();
-  };
-
-  // ---------- ticket page ----------
-  const openTicket=(tok)=>{
-    currentTicketToken = tok;
-    const it = data.issued.find(x=>x.token===tok);
-    if(!it){ showToast("Piletit ei leitud."); return; }
-
-    const ev = data.events.find(e=>e.id===it.eventId);
-    const tt = ev?.tickets.find(t=>t.id===it.ticketTypeId);
-
-    pageTitle.textContent="Pilet";
-    pageSub.textContent="Digipilet (token + QR).";
-    leftTitle.textContent="Pilet";
-    leftHint.textContent="Näita sissepääsus";
-
-    showView("ticket");
-
-    const status = it.usedAt
-      ? `<span class="badge bad">USED • ${fmtDate(it.usedAt)}</span>`
-      : `<span class="badge ok">VALID</span>`;
-    $("#ticketStatus").innerHTML = status;
-
-    $("#ticketMeta").innerHTML = `
-      <span class="tag">${ev?.category||"Üritus"}</span>
-      <span class="tag">${fmtDate(ev?.time||new Date().toISOString())}</span>
-      <span class="tag">${ev?.location||""}</span>
-    `;
-
-    $("#ticketTitle").textContent = `${ev?.title||"Üritus"} • ${tt?.name||"Pilet"}`;
-    $("#ticketText").textContent = `Ostja: ${it.buyerName}${it.buyerEmail?(" ("+it.buyerEmail+")"):""}`;
-    $("#ticketToken").textContent = tok;
-
-    // render QR that points to this same page with hash ticket token (works static)
-    const url = `${location.origin}${location.pathname}#ticket=${tok}`;
-    const canvas = $("#qrCanvas");
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    QRCode.toCanvas(canvas, url, { width: 200, margin: 1 }, (err)=>{
-      if(err) console.error(err);
-    });
-  };
-
-  // ---------- check-in ----------
-  const renderCheckinEventSelect=()=>{
-    const sel=$("#checkinEvent");
-    sel.innerHTML = data.events.map(ev=>`<option value="${ev.id}">${ev.title} • ${fmtDate(ev.time)}</option>`).join("");
-  };
-
-  const checkin=()=>{
-    const eventId=$("#checkinEvent").value;
-    const tok=($("#checkinToken").value||"").trim();
-    const out=$("#checkinResult");
-    out.innerHTML="";
-
-    if(!tok){ out.innerHTML=`<div class="badge warn">Sisesta token.</div>`; return; }
-
-    const it = data.issued.find(x=>x.eventId===eventId && x.token===tok);
-    if(!it){
-      out.innerHTML = `<div class="badge bad">INVALID • Piletit ei leitud selle ürituse alt.</div>`;
-      return;
-    }
-
-    if(it.usedAt){
-      out.innerHTML = `
-        <div class="badge warn">ALREADY USED • ${fmtDate(it.usedAt)}</div>
-        <div class="hint">Ostja: ${it.buyerName}${it.buyerEmail?(" ("+it.buyerEmail+")"):""}</div>
-      `;
-      return;
-    }
-
-    it.usedAt = new Date().toISOString();
-    save(data);
-
-    out.innerHTML = `
-      <div class="badge ok">OK • MARKED USED</div>
-      <div class="hint">Ostja: ${it.buyerName}${it.buyerEmail?(" ("+it.buyerEmail+")"):""}</div>
-    `;
-    showToast("Check-in OK (USED).");
-  };
-
-  // ---------- organizer ----------
-  const ORG_PIN="1234";
-  const orgLogin=()=>{
-    const pin=($("#orgPin").value||"").trim();
-    if(pin!==ORG_PIN){ showToast("Vale PIN."); return; }
-    data.organizer.authed=true;
-    save(data);
-    $("#orgArea").classList.remove("hidden");
-    showToast("Korraldaja sisse logitud.");
-    renderAllOrders();
-  };
-  const orgLogout=()=>{
-    data.organizer.authed=false;
-    save(data);
-    $("#orgArea").classList.add("hidden");
-    showToast("Väljusid.");
-  };
-  const openOrganizer=()=>{
-    pageTitle.textContent="Korraldaja";
-    pageSub.textContent="Lisa üritusi, vaata tellimusi (demo).";
-    leftTitle.textContent="Korraldaja";
-    leftHint.textContent="PIN: 1234";
-    showView("organizer");
-    if(data.organizer.authed) $("#orgArea").classList.remove("hidden");
-    else $("#orgArea").classList.add("hidden");
-    renderAllOrders();
-  };
-
-  const renderAllOrders=()=>{
-    const box=$("#allOrders");
-    const orders=[...data.orders].reverse();
-    if(!orders.length){
-      box.innerHTML=`<p class="desc">Tellimusi pole.</p>`;
-      return;
-    }
-    box.innerHTML = orders.map(o=>{
-      const ev=data.events.find(e=>e.id===o.eventId);
-      return `
-        <div class="row" style="padding:10px 0;border-bottom:1px solid var(--border)">
+  <!-- EVENT -->
+  <div class="page" id="pageEvent">
+    <div class="wrap">
+      <div class="eventHero">
+        <img id="eventHeroImg" alt="" />
+        <div class="overlay"></div>
+        <div class="info">
           <div>
-            <div style="font-weight:900">${o.buyerName} <span class="tag" style="margin-left:6px">${o.status}</span></div>
-            <div class="hint">${ev?.title||""} • ${o.ticketName} × ${o.qty} • ${fmtDate(o.createdAt)}</div>
+            <h1 id="eventName"></h1>
+            <div class="sub" id="eventSub"></div>
           </div>
-          <div style="text-align:right">
-            <div style="font-weight:900">${money(o.total)}</div>
-            <div class="hint">Order: ${o.id.slice(-8)}</div>
+          <div class="row">
+            <span class="status" id="eventStatus"><span class="dot"></span> VALID</span>
+            <button class="btn" id="backHome">← Tagasi</button>
           </div>
         </div>
-      `;
-    }).join("");
-  };
+      </div>
 
-  const saveEvent=()=>{
-    if(!data.organizer.authed){ showToast("Logi korraldajana sisse."); return; }
-    const title=$("#aTitle").value.trim();
-    const time=$("#aTime").value;
-    const loc=$("#aLoc").value.trim();
-    const cat=$("#aCat").value.trim()||"Üritus";
-    const desc=$("#aDesc").value.trim()||"Kirjeldus puudub.";
+      <div class="eventLayout">
+        <div class="panel">
+          <div class="ph">
+            <b>Ürituse info</b>
+            <span style="color:var(--muted);font-weight:900" id="eventCategory"></span>
+          </div>
+          <div class="pb">
+            <p class="desc" id="eventDesc"></p>
 
-    if(!title||!time||!loc){ showToast("Täida: nimi, aeg, asukoht."); return; }
+            <div class="kvs">
+              <div class="kv"><span>Kuupäev</span><div id="eventDate"></div></div>
+              <div class="kv"><span>Asukoht</span><div id="eventLoc"></div></div>
+              <div class="kv"><span>Korraldaja</span><div id="eventOrg"></div></div>
+            </div>
 
-    const t1={id:uid(), name:($("#t1Name").value||"Tavapilet").trim(), price:+$("#t1Price").value||0, total:+$("#t1Qty").value||0, sold:0};
-    const t2={id:uid(), name:($("#t2Name").value||"VIP").trim(), price:+$("#t2Price").value||0, total:+$("#t2Qty").value||0, sold:0};
-    const tickets=[t1,t2].filter(t=>t.total>0 && t.name);
+            <div class="divider"></div>
+            <div style="color:var(--muted);font-weight:900;font-size:12px">
+              Demo: ost loob piletid sinu brauserisse (LocalStorage). Päris platvormi jaoks lisame Supabase + maksed.
+            </div>
+          </div>
+        </div>
 
-    data.events.unshift({
-      id:uid(),
-      title,
-      time:new Date(time).toISOString(),
-      location:loc,
-      category:cat,
-      desc,
-      tickets
+        <div class="panel ticketBox">
+          <div class="ph">
+            <b>Piletite valimine</b>
+            <span style="color:var(--muted);font-weight:900" id="minPrice"></span>
+          </div>
+          <div class="pb">
+            <div class="field">
+              <label>Piletitüüp</label>
+              <select id="ticketType"></select>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1;min-width:140px">
+                <label>Kogus</label>
+                <input id="qty" type="number" min="1" value="1" />
+              </div>
+              <div class="field" style="flex:1;min-width:160px">
+                <label>Kokku</label>
+                <input id="total" disabled />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1;min-width:220px">
+                <label>Ostja nimi</label>
+                <input id="buyerName" placeholder="Nt: Mark" />
+              </div>
+              <div class="field" style="flex:1;min-width:240px">
+                <label>Ostja email</label>
+                <input id="buyerEmail" placeholder="mark@email.com" />
+              </div>
+            </div>
+
+            <div class="sum">
+              <div>Maksta</div>
+              <div id="sumRight"></div>
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+              <button class="smallbtn primary" id="payBtn">Osta pilet (demo)</button>
+              <button class="smallbtn" id="goCheckin">Check-in</button>
+            </div>
+            <div class="note" id="availNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TICKET -->
+  <div class="page" id="pageTicket">
+    <div class="wrap ticketWrap">
+      <div class="ticketTop">
+        <div>
+          <h2 style="margin:0;font-size:22px;letter-spacing:-.02em">Digipilet</h2>
+          <div style="color:var(--muted);font-weight:900" id="ticketLine"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" id="ticketBack">← Tagasi</button>
+          <button class="btn primary" onclick="window.print()">Prindi / Salvesta PDF</button>
+        </div>
+      </div>
+
+      <div class="tokenBox">
+        <div>
+          <div style="font-weight:950;margin-bottom:8px">QR</div>
+          <canvas id="qrCanvas" width="200" height="200"></canvas>
+        </div>
+        <div style="min-width:240px;flex:1">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="status" id="ticketStatus"><span class="dot"></span> VALID</div>
+            <div style="color:var(--muted);font-weight:900;font-size:12px">Näita seda sissepääsus</div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-weight:950">Token</div>
+          <div class="tok" id="ticketToken"></div>
+          <div class="note">Check-in lehel kleebi token. (Järgmine samm: kaameraga skannimine)</div>
+
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="smallbtn primary" id="openCheckinFromTicket">Ava Check-in</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKIN -->
+  <div class="page" id="pageCheckin">
+    <div class="wrap" style="padding:22px 0 40px">
+      <div class="panel">
+        <div class="ph">
+          <b>Check-in</b>
+          <button class="btn" id="checkinBack">← Tagasi</button>
+        </div>
+        <div class="pb">
+          <div class="row">
+            <div class="field" style="flex:1;min-width:260px">
+              <label>Vali üritus</label>
+              <select id="checkEvent"></select>
+            </div>
+            <div class="field" style="flex:1;min-width:320px">
+              <label>Token</label>
+              <input id="checkToken" placeholder="Kleebi token siia…" />
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="smallbtn primary" id="checkBtn">Kontrolli / Märgi USED</button>
+            <button class="smallbtn" id="fillFromHash">Võta token URL-ist</button>
+          </div>
+          <div class="divider"></div>
+          <div id="checkResult" style="font-weight:900"></div>
+          <div class="note">Demo: check-in märgib pileti kasutatuks sinu brauseris.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script>
+    // ---------- helpers ----------
+    const $ = (s)=>document.querySelector(s);
+    const money = (n)=>new Intl.NumberFormat("et-EE",{style:"currency",currency:"EUR"}).format(n);
+    const fmt = (iso)=>new Date(iso).toLocaleString("et-EE",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+    const uid = ()=>crypto.getRandomValues(new Uint32Array(4)).join("-")+"-"+Date.now().toString(16);
+    const tok = ()=>{
+      const a=new Uint8Array(24);crypto.getRandomValues(a);
+      return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join("");
+    };
+    const toastEl=$("#toast");
+    const toast=(m)=>{toastEl.textContent=m;toastEl.classList.remove("hidden");setTimeout(()=>toastEl.classList.add("hidden"),2200);};
+
+    // ---------- storage ----------
+    const KEY="uusfinta_ui_v2";
+    const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"");}catch{return null;}};
+    const save=(d)=>localStorage.setItem(KEY, JSON.stringify(d));
+
+    const seed=()=>{
+      const now=new Date();
+      const add=(d)=>new Date(now.getTime()+d*86400000).toISOString();
+      const data={
+        events:[
+          {
+            id:uid(),
+            title:"Rändprassing: Kaisa Ling ja Rene Paul – Tallinn",
+            time:add(9),
+            location:"Tallinn",
+            category:"Muusika",
+            organizer:"Act Management",
+            city:"tallinn",
+            image:"https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1600&q=70",
+            desc:"Kontsertõhtu – soe, aus ja lähedane. Uksed 19:00, algus 20:00.",
+            tickets:[
+              {id:uid(), name:"Tavapilet", price:19, total:250, sold:0},
+              {id:uid(), name:"VIP", price:39, total:40, sold:0},
+            ]
+          },
+          {
+            id:uid(),
+            title:"SADU | Valgusetendusega öökontsert Rummu karjääris",
+            time:add(15),
+            location:"Rummu karjäär, Vasalamma",
+            category:"Festival",
+            organizer:"Klaus & Viickski Production",
+            city:"tallinn",
+            image:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=70",
+            desc:"Suve suur elamus: muusika + valgus + loodus. Piiratud koguses piletid.",
+            tickets:[
+              {id:uid(), name:"Lisas pilet", price:49, total:1200, sold:0},
+              {id:uid(), name:"Lapsepilet", price:20, total:250, sold:0},
+            ]
+          },
+          {
+            id:uid(),
+            title:"Raadi Standup Õhtu",
+            time:add(6),
+            location:"Tartu / Raadi",
+            category:"Teater",
+            organizer:"Raadi Events",
+            city:"tartu",
+            image:"https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=70",
+            desc:"Õhtu täis head huumorit. Uksed 19:00, show 20:00.",
+            tickets:[
+              {id:uid(), name:"Tavapilet", price:12, total:120, sold:0},
+              {id:uid(), name:"VIP", price:25, total:25, sold:0},
+            ]
+          },
+          {
+            id:uid(),
+            title:"Kevadine Autohuviliste Kokkutulek",
+            time:add(13),
+            location:"Tartu / Raadi lennuväli",
+            category:"Kogupere",
+            organizer:"Raadi Meetups",
+            city:"tartu",
+            image:"https://images.unsplash.com/photo-1511910849309-0dffb8781f7b?auto=format&fit=crop&w=1600&q=70",
+            desc:"Autod, muusika ja foodtruckid. Pere- ja koerasõbralik.",
+            tickets:[
+              {id:uid(), name:"Päevapilet", price:8, total:300, sold:0},
+              {id:uid(), name:"Perepilet", price:18, total:80, sold:0},
+            ]
+          }
+        ],
+        orders:[],
+        issued:[]
+      };
+      save(data);return data;
+    };
+
+    let data=load()||seed();
+    let selectedEvent=null;
+    let lastPage="#home";
+    let activeFilter="all";
+
+    // ---------- pages ----------
+    const pages={
+      home: $("#pageHome"),
+      event: $("#pageEvent"),
+      ticket: $("#pageTicket"),
+      checkin: $("#pageCheckin"),
+    };
+    const show=(name)=>{
+      Object.values(pages).forEach(p=>p.classList.remove("active"));
+      pages[name].classList.add("active");
+    };
+
+    // ---------- filters mapping ----------
+    const catMap={
+      music:["muusika"],
+      theatre:["teater","standup"],
+      festival:["festival"],
+      family:["kogupere","pere"]
+    };
+
+    // ---------- home render ----------
+    const grid=$("#eventGrid");
+    const countText=$("#countText");
+
+    const minPrice=(ev)=>Math.min(...ev.tickets.map(t=>t.price));
+    const remaining=(ev)=>ev.tickets.reduce((s,t)=>s+(t.total-t.sold),0);
+
+    const applyTimeFilter=(ev)=>{
+      const now=new Date();
+      const d=new Date(ev.time);
+      const dayMs=86400000;
+      const startOfToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+      const startOfTomorrow=startOfToday+dayMs;
+      const startOfDay=(dt)=>new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()).getTime();
+
+      if(activeFilter==="today") return startOfDay(d)===startOfToday;
+      if(activeFilter==="tomorrow") return startOfDay(d)===startOfTomorrow;
+      if(activeFilter==="weekend"){
+        const wd=d.getDay(); // 0 Sun, 6 Sat
+        return wd===6 || wd===0;
+      }
+      return true;
+    };
+
+    const applyCatFilter=(ev)=>{
+      if(["music","theatre","festival","family"].includes(activeFilter)){
+        const cats=catMap[activeFilter]||[];
+        const c=(ev.category||"").toLowerCase();
+        return cats.some(x=>c.includes(x));
+      }
+      return true;
+    };
+
+    const list=()=>{
+      const q=($("#q").value||"").trim().toLowerCase();
+      const city=($("#city").value||"").trim().toLowerCase();
+
+      let items=[...data.events];
+
+      if(q){
+        items=items.filter(ev =>
+          (ev.title+" "+ev.organizer+" "+ev.location+" "+ev.category+" "+ev.desc).toLowerCase().includes(q)
+        );
+      }
+      if(city){
+        items=items.filter(ev => (ev.city||"").toLowerCase().includes(city) || (ev.location||"").toLowerCase().includes(city));
+      }
+
+      items=items.filter(applyTimeFilter).filter(applyCatFilter);
+
+      items.sort((a,b)=>new Date(a.time)-new Date(b.time));
+
+      countText.textContent = items.length ? `${items.length} tulemust` : `Tulemusi pole`;
+
+      grid.innerHTML="";
+      for(const ev of items){
+        const rem=remaining(ev);
+        const badge = rem<=0 ? "Välja müüdud" : ev.category;
+        const card=document.createElement("div");
+        card.className="card";
+        card.innerHTML=`
+          <div class="thumb">
+            <img src="${ev.image}" alt="${ev.title}">
+            <div class="badge">${badge}</div>
+          </div>
+          <div class="content">
+            <h3 class="title">${ev.title}</h3>
+            <div class="meta">
+              <div>${fmt(ev.time)}</div>
+              <div>•</div>
+              <div>${ev.location}</div>
+            </div>
+            <div class="priceRow">
+              <div class="price">Al. ${money(minPrice(ev))}</div>
+              <div class="cta"><span>Osta pilet</span>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M9 18 15 12 9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+        `;
+        card.onclick=()=>openEvent(ev.id);
+        grid.appendChild(card);
+      }
+
+      if(!items.length){
+        grid.innerHTML = `
+          <div class="panel" style="grid-column:1/-1">
+            <div class="pb" style="color:var(--muted);font-weight:900">
+              Üritusi ei leitud. Proovi teist otsingut või linna.
+            </div>
+          </div>`;
+      }
+    };
+
+    // ---------- open event ----------
+    const openEvent=(id)=>{
+      const ev=data.events.find(e=>e.id===id);
+      if(!ev) return;
+      selectedEvent=ev;
+      lastPage=location.hash||"#home";
+      location.hash="#event-"+id;
+      renderEvent();
+      show("event");
+    };
+
+    const ticketType=$("#ticketType");
+    const qty=$("#qty");
+    const total=$("#total");
+    const sumRight=$("#sumRight");
+    const availNote=$("#availNote");
+
+    const renderEvent=()=>{
+      const ev=selectedEvent;
+      $("#eventHeroImg").src=ev.image;
+      $("#eventHeroImg").alt=ev.title;
+      $("#eventName").textContent=ev.title;
+      $("#eventSub").textContent=`${fmt(ev.time)} • ${ev.location}`;
+      $("#eventCategory").textContent=ev.category;
+      $("#eventDesc").textContent=ev.desc;
+      $("#eventDate").textContent=fmt(ev.time);
+      $("#eventLoc").textContent=ev.location;
+      $("#eventOrg").textContent=ev.organizer || "—";
+
+      const mp=minPrice(ev);
+      $("#minPrice").textContent=`Al. ${money(mp)}`;
+
+      ticketType.innerHTML = ev.tickets.map(t=>{
+        const rem=t.total-t.sold;
+        const dis=rem<=0?"disabled":"";
+        return `<option value="${t.id}" ${dis}>${t.name} • ${money(t.price)} • ${rem} alles</option>`;
+      }).join("");
+
+      $("#buyerName").value = $("#buyerName").value || "Demo Ostja";
+      qty.value=1;
+      calcTotal();
+      renderAvailNote();
+    };
+
+    const calcTotal=()=>{
+      const ev=selectedEvent;
+      const t=ev.tickets.find(x=>x.id===ticketType.value) || ev.tickets[0];
+      const q=Math.max(1, parseInt(qty.value||"1",10));
+      qty.value=q;
+      const sum=t.price*q;
+      total.value=money(sum);
+      sumRight.textContent=money(sum);
+      renderAvailNote();
+    };
+
+    const renderAvailNote=()=>{
+      const ev=selectedEvent;
+      const t=ev.tickets.find(x=>x.id===ticketType.value) || ev.tickets[0];
+      const rem=t.total-t.sold;
+      const soldOut=rem<=0;
+      const status=$("#eventStatus");
+      status.innerHTML = soldOut
+        ? `<span class="dot used"></span> VÄLJA MÜÜDUD`
+        : `<span class="dot"></span> ${rem} piletit alles`;
+      availNote.textContent = soldOut
+        ? "See piletitüüp on välja müüdud."
+        : "Demo ost vähendab saadavust sinu brauseris.";
+    };
+
+    // ---------- purchase (demo) ----------
+    const pay=()=>{
+      const ev=selectedEvent;
+      const t=ev.tickets.find(x=>x.id===ticketType.value);
+      if(!t) return;
+      const q=Math.max(1, parseInt(qty.value||"1",10));
+      const rem=t.total-t.sold;
+      if(q>rem){toast("Pole piisavalt pileteid.");return;}
+      const buyerName=($("#buyerName").value||"").trim()||"Ostja";
+      const buyerEmail=($("#buyerEmail").value||"").trim();
+
+      t.sold += q;
+
+      const orderId=uid();
+      data.orders.push({
+        id:orderId,eventId:ev.id,createdAt:new Date().toISOString(),
+        buyerName,buyerEmail,ticketTypeId:t.id,ticketName:t.name,qty:q,total:t.price*q,status:"paid_demo"
+      });
+
+      const tokens=[];
+      for(let i=0;i<q;i++){
+        const tk=tok();
+        data.issued.push({
+          id:uid(),orderId,eventId:ev.id,ticketTypeId:t.id,token:tk,
+          usedAt:null,createdAt:new Date().toISOString(),buyerName,buyerEmail
+        });
+        tokens.push(tk);
+      }
+      save(data);
+      toast("Ost tehtud (demo). Pilet loodud!");
+      openTicket(tokens[0]);
+      list();
+    };
+
+    // ---------- ticket page ----------
+    let currentToken=null;
+
+    const openTicket=(tk)=>{
+      currentToken=tk;
+      location.hash="#ticket-"+tk;
+      const it=data.issued.find(x=>x.token===tk);
+      if(!it){toast("Piletit ei leitud.");return;}
+      const ev=data.events.find(e=>e.id===it.eventId);
+      const tt=ev?.tickets.find(t=>t.id===it.ticketTypeId);
+
+      $("#ticketLine").textContent = `${ev?.title||"Üritus"} • ${tt?.name||"Pilet"} • ${fmt(it.createdAt)}`;
+      $("#ticketToken").textContent = tk;
+
+      const status=$("#ticketStatus");
+      status.innerHTML = it.usedAt ? `<span class="dot used"></span> USED` : `<span class="dot"></span> VALID`;
+
+      const url = `${location.origin}${location.pathname}#ticket-${tk}`;
+      const canvas=$("#qrCanvas");
+      QRCode.toCanvas(canvas, url, { width: 200, margin: 1 }, ()=>{});
+      show("ticket");
+    };
+
+    // ---------- checkin ----------
+    const renderCheckinSelect=()=>{
+      const sel=$("#checkEvent");
+      sel.innerHTML=data.events
+        .slice()
+        .sort((a,b)=>new Date(a.time)-new Date(b.time))
+        .map(ev=>`<option value="${ev.id}">${ev.title} • ${fmt(ev.time)}</option>`).join("");
+    };
+
+    const checkin=()=>{
+      const evId=$("#checkEvent").value;
+      const tk=($("#checkToken").value||"").trim();
+      const out=$("#checkResult");
+      out.textContent="";
+      if(!tk){out.textContent="Sisesta token.";out.style.color="#b45309";return;}
+
+      const it=data.issued.find(x=>x.eventId===evId && x.token===tk);
+      if(!it){out.textContent="INVALID: piletit ei leitud selle ürituse alt.";out.style.color= "var(--red)";return;}
+      if(it.usedAt){out.textContent=`ALREADY USED: ${fmt(it.usedAt)}`;out.style.color="#b45309";return;}
+
+      it.usedAt=new Date().toISOString();
+      save(data);
+      out.textContent="OK: märgitud USED.";
+      out.style.color="var(--green)";
+      toast("Check-in OK (USED).");
+    };
+
+    // ---------- routing ----------
+    const route=()=>{
+      const h=location.hash||"#home";
+      if(h.startsWith("#event-")){
+        const id=h.replace("#event-","");
+        const ev=data.events.find(e=>e.id===id);
+        if(ev){selectedEvent=ev;renderEvent();show("event");return;}
+      }
+      if(h.startsWith("#ticket-")){
+        const tk=h.replace("#ticket-","");
+        openTicket(tk);
+        return;
+      }
+      if(h==="#checkin"){
+        renderCheckinSelect();
+        show("checkin");
+        return;
+      }
+      show("home");
+      list();
+    };
+
+    // ---------- UI bindings ----------
+    $("#doSearch").onclick=list;
+    $("#q").addEventListener("input", ()=>list());
+    $("#city").addEventListener("input", ()=>list());
+
+    document.querySelectorAll(".pill").forEach(p=>{
+      p.onclick=()=>{
+        document.querySelectorAll(".pill").forEach(x=>x.classList.remove("active"));
+        p.classList.add("active");
+        activeFilter=p.dataset.filter;
+        list();
+      };
     });
-    save(data);
-    showToast("Üritus lisatud!");
-    $("#aTitle").value=""; $("#aTime").value=""; $("#aLoc").value=""; $("#aCat").value=""; $("#aDesc").value="";
-    openHome();
-  };
 
-  const deleteAllOrders=()=>{
-    if(!data.organizer.authed){ showToast("Logi korraldajana sisse."); return; }
-    if(!confirm("Kustutan kõik tellimused ja issued piletid (demo). Oled kindel?")) return;
-    data.orders=[];
-    data.issued=[];
-    // reset sold
-    data.events.forEach(ev=>ev.tickets.forEach(t=>t.sold=0));
-    save(data);
-    showToast("Tellimused kustutatud.");
-    renderAllOrders();
-    listEvents();
-  };
+    $("#backHome").onclick=()=>{location.hash="#home";};
+    ticketType.addEventListener("change", calcTotal);
+    qty.addEventListener("input", calcTotal);
+    $("#payBtn").onclick=pay;
+    $("#goCheckin").onclick=()=>{location.hash="#checkin"; renderCheckinSelect();};
 
-  // ---------- routing via hash ----------
-  const route=()=>{
-    const h=location.hash||"";
-    if(h.startsWith("#ticket=")){
-      const tok=decodeURIComponent(h.split("=")[1]||"");
-      if(tok) openTicket(tok);
-      return;
-    }
-    if(h==="#organizer"){ openOrganizer(); return; }
-    if(h==="#checkin"){ openCheckin(); return; }
-    openHome();
-  };
+    $("#ticketBack").onclick=()=>{location.hash="#home";};
+    $("#openCheckinFromTicket").onclick=()=>{
+      location.hash="#checkin";
+      renderCheckinSelect();
+      $("#checkToken").value=currentToken||"";
+    };
 
-  const openCheckin=()=>{
-    pageTitle.textContent="Check-in";
-    pageSub.textContent="Kontrolli pileteid tokeni järgi ja märgi USED.";
-    leftTitle.textContent="Check-in";
-    leftHint.textContent="Token → USED";
-    showView("checkin");
-    renderCheckinEventSelect();
-    $("#checkinResult").innerHTML="";
-  };
+    $("#checkBtn").onclick=checkin;
+    $("#fillFromHash").onclick=()=>{
+      const h=location.hash||"";
+      if(h.startsWith("#ticket-")){
+        $("#checkToken").value=h.replace("#ticket-","");
+      } else if(currentToken){
+        $("#checkToken").value=currentToken;
+      }
+    };
+    $("#checkinBack").onclick=()=>{location.hash="#home";};
 
-  // ---------- events ----------
-  $("#search").addEventListener("input", listEvents);
-  $("#sort").addEventListener("change", listEvents);
-  ticketType.addEventListener("change", calcTotal);
-  qty.addEventListener("input", calcTotal);
+    // Fake auth buttons
+    $("#btnSignup").onclick=()=>toast("Demo: konto loomine tuleb Supabase etapiga.");
+    $("#btnLogin").onclick=()=>toast("Demo: login tuleb Supabase etapiga.");
 
-  $("#payBtn").addEventListener("click", pay);
-  $("#backBtn").addEventListener("click", ()=>{ location.hash=""; });
-  $("#ticketBackBtn").addEventListener("click", ()=>{ location.hash=""; });
+    window.addEventListener("hashchange", route);
 
-  $("#printBtn").addEventListener("click", ()=>window.print());
-
-  $("#checkBtn").addEventListener("click", checkin);
-  $("#checkinBackBtn").addEventListener("click", ()=>{ location.hash=""; });
-
-  $("#orgLoginBtn").addEventListener("click", orgLogin);
-  $("#orgLogoutBtn").addEventListener("click", orgLogout);
-  $("#saveEvent").addEventListener("click", saveEvent);
-  $("#deleteAllOrders").addEventListener("click", deleteAllOrders);
-
-  $("#navHome").addEventListener("click", ()=>{ location.hash=""; });
-  $("#navOrganizer").addEventListener("click", ()=>{ location.hash="#organizer"; });
-  $("#navCheckin").addEventListener("click", ()=>{ location.hash="#checkin"; });
-
-  $("#navReset").addEventListener("click", ()=>{
-    localStorage.removeItem(KEY);
-    data = seed();
-    showToast("Demo reset tehtud.");
-    location.hash="";
-  });
-
-  window.addEventListener("hashchange", route);
-
-  // ---------- init ----------
-  route();
-</script>
+    // init
+    route();
+  </script>
 </body>
 </html>
