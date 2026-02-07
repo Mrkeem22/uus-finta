@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Uus Fienta</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: #fff;
+      background: radial-gradient(circle at top, #1e3a8a, #020617);
+    }
+    header {
+      padding: 20px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(12px);
+    }
+    header h1 { margin: 0; font-size: 20px; }
+    nav a {
+      color: #c7d2fe;
+      margin-left: 20px;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .hero {
+      min-height: 85vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      background:
+        radial-gradient(circle at 25% 20%, rgba(34,197,94,.25), transparent 40%),
+        radial-gradient(circle at 75% 30%, rgba(59,130,246,.25), transparent 45%);
+    }
+    .hero h2 {
+      font-size: 46px;
+      margin-bottom: 16px;
+    }
+    .hero p {
+      font-size: 18px;
+      color: #cbd5f5;
+      max-width: 720px;
+      margin: 0 auto 30px;
+    }
+    .tags span {
+      display: inline-block;
+      margin: 6px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      font-size: 14px;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      background: #22c55e;
+      color: #022c22;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    section {
+      padding: 90px 40px;
+      max-width: 1100px;
+      margin: auto;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
+      gap: 22px;
+    }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 26px;
+    }
+    .card h3 { margin-top: 0; }
+    footer {
+      padding: 40px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Uus Fienta</h1>
+  <nav>
+    <a href="#">Avaleht</a>
+    <a href="#">Üritused</a>
+    <a href="#">Kontakt</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div>
+    <h2>Sinu ürituse täislahendus ühest kohast</h2>
+    <p>Korralda, müü ja kontrolli pileteid digitaalselt. Digipiletid, QR-check-in ja ürituste haldus ühes süsteemis.</p>
+    <div class="tags">
+      <span>Piletimüük</span>
+      <span>QR-check-in</span>
+      <span>Ürituste haldus</span>
+      <span>Statistika</span>
