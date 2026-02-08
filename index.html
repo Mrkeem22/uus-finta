@@ -42,19 +42,18 @@
     <div class="actions">
       <button class="btn btn-ghost" id="btnAuth">Logi sisse</button>
       <button class="btn btn-primary hidden" id="btnDashboard">Korraldaja</button>
+      <button class="btn btn-ghost hidden" id="btnCheckin">Check-in</button>
       <button class="btn btn-danger hidden" id="btnLogout">Logi välja</button>
     </div>
   </div>
 </header>
 
-<!-- =========================
-  HOME PAGE
-========================= -->
+<!-- ========================= HOME ========================= -->
 <main class="wrap page active" id="pageHome">
   <div class="hero">
     <div class="hero-badge">⚡ Night-ready piletiplatvorm</div>
     <h1 class="hero-title">Leia elamus, mis <span class="glow">päriselt</span> loeb</h1>
-    <p class="hero-sub">Otsi üritusi, vali pilet ja saa QR-pilet e-mailile.</p>
+    <p class="hero-sub">Otsi üritusi, vali pilet ja saa QR-pilet e-mailile (järgmise sammuna päris email).</p>
   </div>
 
   <div class="searchCard">
@@ -88,9 +87,7 @@
   <div class="grid" id="eventGrid"></div>
 </main>
 
-<!-- =========================
-  EVENT PAGE (Ticketer-stiilis + "Loe edasi" toggle)
-========================= -->
+<!-- ========================= EVENT (light) ========================= -->
 <main class="page" id="pageEvent">
   <section class="eventTop wrap">
     <button class="evBack" id="evBack" aria-label="Tagasi">←</button>
@@ -132,9 +129,7 @@
   </section>
 </main>
 
-<!-- =========================
-  CHECKOUT PAGE
-========================= -->
+<!-- ========================= CHECKOUT (dark) ========================= -->
 <main class="wrap page" id="pageCheckout">
   <div class="checkoutTop">
     <button class="btn btn-ghost" id="coBack">←</button>
@@ -149,29 +144,14 @@
       <div class="panelHead"><div class="panelTitle">Tellija</div></div>
       <div class="panelBody">
         <div class="row2">
-          <div class="field">
-            <label>Eesnimi</label>
-            <input id="firstName" placeholder="Eesnimi">
-          </div>
-          <div class="field">
-            <label>Perenimi</label>
-            <input id="lastName" placeholder="Perenimi">
-          </div>
+          <div class="field"><label>Eesnimi</label><input id="firstName" placeholder="Eesnimi"></div>
+          <div class="field"><label>Perenimi</label><input id="lastName" placeholder="Perenimi"></div>
         </div>
 
-        <div class="field">
-          <label>E-mail</label>
-          <input id="email" placeholder="E-mail">
-        </div>
+        <div class="field"><label>E-mail</label><input id="email" placeholder="E-mail"></div>
 
-        <label class="check">
-          <input type="checkbox" id="c1">
-          <span>Nõustun kasutustingimuste ja privaatsustingimustega.</span>
-        </label>
-        <label class="check">
-          <input type="checkbox" id="c2">
-          <span>Mõistan, et pileteid müüb korraldaja.</span>
-        </label>
+        <label class="check"><input type="checkbox" id="c1"><span>Nõustun tingimustega.</span></label>
+        <label class="check"><input type="checkbox" id="c2"><span>Mõistan, et pileteid müüb korraldaja.</span></label>
 
         <button class="btn btn-primary btn-pay" id="payBtn">MAKSMA →</button>
         <div class="muted" id="mailHint"></div>
@@ -189,9 +169,116 @@
   </div>
 </main>
 
-<!-- =========================
-  AUTH MODAL
-========================= -->
+<!-- ========================= ORGANIZER (dark) ========================= -->
+<main class="wrap page" id="pageOrg">
+  <div class="orgTop">
+    <div>
+      <div class="orgTitle">Korraldaja</div>
+      <div class="muted" id="orgHint">Halda üritusi, pileteid ja müüki.</div>
+    </div>
+    <div class="orgActions">
+      <button class="btn btn-primary" id="newEventBtn">+ Uus üritus</button>
+    </div>
+  </div>
+
+  <div class="orgGrid">
+    <section class="panel">
+      <div class="panelHead">
+        <div class="panelTitle">Minu üritused</div>
+      </div>
+      <div class="panelBody">
+        <div class="orgList" id="orgList"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHead">
+        <div>
+          <div class="panelTitle">Ürituse detailid</div>
+          <div class="muted" id="editMeta">Vali vasakult üritus või loo uus.</div>
+        </div>
+      </div>
+      <div class="panelBody">
+        <div class="orgForm">
+          <div class="row2">
+            <div class="field"><label>Pealkiri</label><input id="f_title" placeholder="Ürituse nimi"></div>
+            <div class="field"><label>Kategooria</label><input id="f_category" placeholder="Muusika / Festival / jne"></div>
+          </div>
+
+          <div class="row2">
+            <div class="field">
+              <label>Linn</label>
+              <select id="f_city">
+                <option value="tallinn">Tallinn</option>
+                <option value="tartu">Tartu</option>
+                <option value="parnu">Pärnu</option>
+                <option value="narva">Narva</option>
+              </select>
+            </div>
+            <div class="field"><label>Kuupäev ja kell</label><input id="f_time" type="datetime-local"></div>
+          </div>
+
+          <div class="field"><label>Asukoht</label><input id="f_location" placeholder="Klubi, aadress"></div>
+          <div class="field"><label>Pildi URL (poster)</label><input id="f_image" placeholder="https://..."></div>
+
+          <div class="field"><label>Kirjeldus</label><textarea id="f_desc" rows="4" placeholder="Mis toimub?"></textarea></div>
+          <div class="field"><label>Hea teada (iga rida eraldi)</label><textarea id="f_notes" rows="3" placeholder="Vanusepiirang 18+&#10;Parkimine..."></textarea></div>
+
+          <div class="divider"></div>
+
+          <div class="ticketsHead">
+            <div class="panelTitle" style="margin:0">Piletitüübid</div>
+            <button class="btn btn-ghost" id="addTicketBtn">+ Lisa pilet</button>
+          </div>
+
+          <div class="ticketEditor" id="ticketEditor"></div>
+
+          <div class="orgSaveRow">
+            <button class="btn btn-danger hidden" id="deleteEventBtn">Kustuta</button>
+            <button class="btn btn-primary" id="saveEventBtn">Salvesta</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ========================= CHECK-IN (dark) ========================= -->
+<main class="wrap page" id="pageCheckin">
+  <div class="orgTop">
+    <div>
+      <div class="orgTitle">Check-in</div>
+      <div class="muted">Sisesta QR-kood / piletikood või otsi emaili järgi.</div>
+    </div>
+    <div class="orgActions">
+      <button class="btn btn-ghost" id="backToOrg">← Korraldaja</button>
+    </div>
+  </div>
+
+  <div class="checkinGrid">
+    <section class="panel">
+      <div class="panelHead"><div class="panelTitle">Kontroll</div></div>
+      <div class="panelBody">
+        <div class="field"><label>Kood (QR / TicketCode)</label><input id="scanInput" placeholder="TR-XXXX-XXXX"></div>
+        <button class="btn btn-primary w100" id="scanBtn">Kontrolli</button>
+
+        <div class="divider"></div>
+
+        <div class="field"><label>Otsi email</label><input id="emailSearch" placeholder="ostja@email.ee"></div>
+        <button class="btn btn-ghost w100" id="emailBtn">Otsi</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panelHead"><div class="panelTitle">Tulemus</div></div>
+      <div class="panelBody">
+        <div class="checkResult" id="checkResult">—</div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ========================= AUTH MODAL ========================= -->
 <div class="modalBack hidden" id="authBack">
   <div class="modal">
     <div class="modalHead">
@@ -237,3 +324,4 @@
 <script src="./app.js"></script>
 </body>
 </html>
+
