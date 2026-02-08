@@ -23,25 +23,20 @@
     </nav>
 
     <div class="actions">
-      <button class="btn ghost" id="btnLogin">Logi sisse</button>
-      <button class="btn" id="btnSignup">Loo konto</button>
+      <!-- Ainult 1 nupp -->
+      <button class="btn ghost" id="btnAuth">Logi sisse</button>
       <button class="btn ghost" id="btnLogout" hidden>Logi välja</button>
     </div>
   </header>
 
   <main id="app" class="app" aria-live="polite"></main>
 
-  <!-- AUTH MODAL -->
+  <!-- AUTH MODAL (üks vaade korraga) -->
   <div class="modal" id="modalAuth" aria-hidden="true">
     <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <div class="modalTop">
         <h3 id="authTitle">Logi sisse</h3>
         <button class="iconBtn" id="authClose" aria-label="Sulge">✕</button>
-      </div>
-
-      <div class="tabs">
-        <button class="tab isActive" id="tabLogin">Logi sisse</button>
-        <button class="tab" id="tabSignup">Loo konto</button>
       </div>
 
       <form id="formLogin" class="form">
@@ -59,6 +54,10 @@
           Demo korraldaja: <b>demo@ticketrise.ee</b> / <b>Ticketrise123!</b><br/>
           Demo ostja: <b>buyer@ticketrise.ee</b> / <b>Ticketrise123!</b>
         </p>
+
+        <p class="hint">
+          Pole kontot? <button type="button" class="linkBtn" id="toSignup">Loo konto</button>
+        </p>
       </form>
 
       <form id="formSignup" class="form" hidden>
@@ -75,12 +74,25 @@
           <input type="password" name="password2" autocomplete="new-password" minlength="8" required />
         </label>
         <button class="btn full" type="submit">Loo konto</button>
+
         <p class="hint">
-          Pärast konto loomist saad oma kontost valida, kas kasutad ostjana või aktiveerid korraldaja režiimi.
+          Konto olemas? <button type="button" class="linkBtn" id="toLogin">Logi sisse</button>
         </p>
       </form>
 
       <div class="toast" id="authToast" hidden></div>
+    </div>
+  </div>
+
+  <!-- EVENT DETAIL MODAL (et “kastile vajutades avaneb”) -->
+  <div class="modal" id="modalEvent" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="eventTitle">
+      <div class="modalTop">
+        <h3 id="eventTitle">Üritus</h3>
+        <button class="iconBtn" id="eventClose" aria-label="Sulge">✕</button>
+      </div>
+
+      <div id="eventBody"></div>
     </div>
   </div>
 
