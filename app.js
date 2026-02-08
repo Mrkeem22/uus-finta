@@ -1,754 +1,1228 @@
-const KEY="ticketrise_full_v1";
+/* =========================================================
+   Ticketrise — SINGLE FILE APP (localStorage demo)
+   - Auth: login/register + session
+   - Organizer: full profile (company) + payout + events + analytics
+   - Events: poster visible, tickets card, "Loe edasi" details view
+   - Checkout: buyer details + send email w/ QR via /api/send-email
+   ========================================================= */
 
-const $ = (s)=>document.querySelector(s);
-const money = (n)=>new Intl.NumberFormat("et-EE",{style:"currency",currency:"EUR"}).format(n);
-const uid = ()=>crypto.getRandomValues(new Uint32Array(4)).join("-")+"-"+Date.now().toString(16);
-const fmt = (iso)=>new Date(iso).toLocaleString("et-EE",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
-const toLocalInput = (iso)=>{
-  const d=new Date(iso);
-  const pad=(x)=>String(x).padStart(2,"0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-const fromLocalInput = (v)=> new Date(v).toISOString();
-
-const toastEl=$("#toast");
-const toast=(m)=>{
-  toastEl.textContent=m;
-  toastEl.classList.remove("hidden");
-  setTimeout(()=>toastEl.classList.add("hidden"),2200);
+const LS = {
+  USERS: "TR_USERS",
+  SESSION: "TR_SESSION",
+  EVENTS: "TR_EVENTS",
+  ORDERS: "TR_ORDERS",
 };
 
-const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"");}catch{return null;}};
-const save=(d)=>localStorage.setItem(KEY, JSON.stringify(d));
+const $$ = (s, el = document) => el.querySelector(s);
+const $$$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const uid = () => Math.random().toString(16).slice(2) + Date.now().toString(16);
 
-const seed=()=>{
-  const now=new Date();
-  const addDays=(d)=>new Date(now.getTime()+d*86400000).toISOString();
-  const d={
-    settings:{ city:"" },
-    session:{ email:null, role:null },
-    users:[],
-    organizerProfiles:{}, // email -> profile
-    events:[
-      {
-        id:uid(),
-        ownerEmail:"demo@organizer.ee",
-        organizer:"Suvepeod Events",
-        title:"TARTU SUUR SÕBRAPÄEVA REIV | SIMI | LENE MA RUE",
-        category:"Muusika",
-        city:"tartu",
-        start:addDays(10),
-        end:null,
-        doors:"23:00",
-        age:"18+",
-        location:"KLUBI GUTENBERG - APARAADITEHAS, TARTU",
-        image:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=75",
-        desc:"LINEUP:\n• SIMI\n• LENE MA RUE\n\nUKSED: 23:00\nVANUSEPIIRANG: 18+\n\nTule varakult, pileteid on piiratud koguses!",
-        notes:["Võta ID kaasa (18+).","Sisenemine kuni 01:00 (vaata piletitüübi tingimusi).","Pileteid on piiratud koguses."],
-        socials:[{label:"Facebook",url:"#"}],
-        tickets:[
-          {id:uid(), name:"HILSEM SÕPS", price:15, total:200, sold:0, desc:"Sisenemine kuni 01:00"},
-          {id:uid(), name:"PRIORITY", price:25, total:80, sold:0, desc:"Kiirem sisenemine"}
-        ]
+const money = (n) => {
+  const x = Number(n || 0);
+  return x.toFixed(2).replace(".", ",") + " €";
+};
+
+const cityName = (c) => ({
+  tallinn: "Tallinn",
+  tartu: "Tartu",
+  parnu: "Pärnu",
+  narva: "Narva",
+  all: "Kõik linnad",
+}[c] || "");
+
+function toast(msg) {
+  const t = $$("#toast");
+  t.textContent = msg;
+  t.classList.remove("hidden");
+  clearTimeout(window.__toastT);
+  window.__toastT = setTimeout(() => t.classList.add("hidden"), 3200);
+}
+
+function read(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch { return fallback; }
+}
+function write(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+/* ===================== SEED DATA ===================== */
+function seedIfEmpty() {
+  const users = read(LS.USERS, []);
+  const events = read(LS.EVENTS, []);
+  const orders = read(LS.ORDERS, []);
+
+  if (!users.length) {
+    users.push({
+      id: uid(),
+      email: "organizer@ticketrise.ee",
+      pass: "Ticketrise123!",
+      first: "Demo",
+      last: "Korraldaja",
+      lang: "et",
+      // organizer fields
+      org: {
+        enabled: true, // user can access organizer menus
+        profileComplete: true,
+        payoutComplete: true,
+        status: "Kinnitatud",
+        company: "Ticketrise Demo OÜ",
+        reg: "12345678",
+        vat: "",
+        country: "Eesti",
+        address: "Näidise tn 1, Tallinn",
+        contact: "Demo Korraldaja",
+        phone: "+372 555 5555",
+        email: "organizer@ticketrise.ee",
+        terms: true,
+        iban: "EE123456789012345678",
+        bank: "Demo Bank",
       }
-    ],
-    orders:[]
-  };
-  save(d); return d;
+    });
+
+    users.push({
+      id: uid(),
+      email: "buyer@ticketrise.ee",
+      pass: "Ticketrise123!",
+      first: "Demo",
+      last: "Ostja",
+      lang: "et",
+      org: { enabled: false, profileComplete: false, payoutComplete: false, status: "—" }
+    });
+
+    write(LS.USERS, users);
+  }
+
+  if (!events.length) {
+    const orgUser = read(LS.USERS, [])[0];
+
+    events.push({
+      id: uid(),
+      ownerUserId: orgUser.id,
+      organizerName: orgUser.org.company,
+      title: "TARTU SUUR SÕBRAPÄEVA REIV | SIMI | LENE MA RUE",
+      category: "Muusika",
+      city: "tartu",
+      startISO: new Date(Date.now() + 1000*60*60*24*10).toISOString(),
+      doors: "23:00",
+      age: "18+",
+      location: "Klubi Gutenberg - Aparaaditehas",
+      image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1600&q=70",
+      fb: "https://facebook.com",
+      short: "Sõbrapäeva erikas: SIMI + Lene Ma Rue + local DJ-d. Uksed 23:00, vanusepiirang 18+.",
+      desc: "Veebruaris ootame lennutada kohale muusika ja bassi sekk. Tule varakult, sest kohapeal võib olla piiratud arv pileteid.\n\nPidu tuleb mõnus ja käib kaua.",
+      notes: [
+        "Võta ID kaasa (18+).",
+        "Sisenemine kuni 01:00 (vaata piletitüübi tingimust).",
+        "Tasuline garderoob."
+      ],
+      forbidden: [
+        "iseelikurite, tõuke- ja jalgrattasegad",
+        "kaasavõetud söögid ja joogid",
+        "lemmikloomad (v.a. abikoerad)",
+        "professionaalsed foto-, video- või audiotehnikad (ilma akrediteeringuta)",
+        "selja-, kande- ja spordikotid",
+        "tuli-, külm- ja muud tüüpi relvad"
+      ],
+      tickets: [
+        { id: uid(), name:"SÕBRAPÄEVA COMBO", price:25, fee:0, limit:120, sold: 0, sub:"Kiirem sisenemine + kombo" },
+        { id: uid(), name:"HILISEM SÕPS", price:15, fee:0, limit:200, sold: 0, sub:"Sisenemine kuni 01:00" },
+        { id: uid(), name:"PRIORITY", price:25, fee:0, limit:80, sold: 0, sub:"Kiirem sisenemine" },
+        { id: uid(), name:"LAUABRONEERING (8p)", price:100, fee:0, limit:20, sold: 0, sub:"Broneering + laud" },
+      ],
+      createdAt: Date.now(),
+      published: true,
+    });
+
+    write(LS.EVENTS, events);
+  }
+
+  if (!orders.length) write(LS.ORDERS, orders);
+}
+seedIfEmpty();
+
+/* ===================== GLOBAL STATE ===================== */
+let session = read(LS.SESSION, null); // { userId, mode: 'buyer'|'organizer' }
+let currentEventId = null;
+let checkoutCart = null; // { eventId, items:[{ticketId, qty}] }
+
+/* ===================== DOM REFS ===================== */
+const pages = {
+  home: $$("#pageHome"),
+  event: $$("#pageEvent"),
+  checkout: $$("#pageCheckout"),
+  account: $$("#pageAccount"),
 };
 
-let data = load() || seed();
+const btnAuth = $$("#btnAuth");
+const btnAccount = $$("#btnAccount");
+const btnLogout = $$("#btnLogout");
 
-/* ========================= AUTH ========================= */
-const authBack=$("#authBack");
-const refreshAuth=()=>{
-  const logged=!!data.session.email;
-  $("#btnDashboard").classList.toggle("hidden", !(logged && data.session.role==="organizer"));
-  $("#btnLogout").classList.toggle("hidden", !logged);
-  $("#btnAuth").textContent = logged ? "Konto" : "Logi sisse";
-};
-refreshAuth();
+const authBack = $$("#authBack");
+const tabLogin = $$("#tabLogin");
+const tabRegister = $$("#tabRegister");
+const loginView = $$("#loginView");
+const registerView = $$("#registerView");
+const authClose = $$("#authClose");
+const doLoginBtn = $$("#doLogin");
+const doRegisterBtn = $$("#doRegister");
 
-$("#btnAuth").onclick=()=>authBack.classList.remove("hidden");
-$("#authClose").onclick=()=>authBack.classList.add("hidden");
-authBack.onclick=(e)=>{ if(e.target===authBack) authBack.classList.add("hidden"); };
+const qInput = $$("#q");
+const citySelect = $$("#city");
+const doSearch = $$("#doSearch");
+const eventGrid = $$("#eventGrid");
+const countText = $$("#countText");
 
-$("#tabLogin").onclick=()=>{
-  $("#tabLogin").classList.add("active"); $("#tabRegister").classList.remove("active");
-  $("#loginView").classList.remove("hidden"); $("#registerView").classList.add("hidden");
-};
-$("#tabRegister").onclick=()=>{
-  $("#tabRegister").classList.add("active"); $("#tabLogin").classList.remove("active");
-  $("#registerView").classList.remove("hidden"); $("#loginView").classList.add("hidden");
-};
+/* Event page */
+const evHeroBg = $$("#evHeroBg");
+const evBack = $$("#evBack");
+const evTopMeta = $$("#evTopMeta");
+const evTitle = $$("#evTitle");
+const evBadges = $$("#evBadges");
+const evLink = $$("#evLink");
+const evMoreBtn = $$("#evMoreBtn");
+const evPoster = $$("#evPoster");
+const evKicker = $$("#evKicker");
+const evShort = $$("#evShort");
+const ticketsGrid = $$("#ticketsGrid");
 
-$("#doRegister").onclick=()=>{
-  const email=$("#regEmail").value.trim().toLowerCase();
-  const pass=$("#regPass").value.trim();
-  const role=$("#regRole").value;
-  if(!email||!pass) return toast("Täida email ja parool.");
-  if(data.users.some(u=>u.email===email && u.role===role)) return toast("Konto juba olemas.");
-  data.users.push({id:uid(), email, pass, role});
-  data.session={email, role};
-  save(data); refreshAuth();
-  toast("Konto loodud ✅");
-  authBack.classList.add("hidden");
-};
+const evDetails = $$("#evDetails");
+const evDetailsMeta = $$("#evDetailsMeta");
+const evDetailsTitle = $$("#evDetailsTitle");
+const evDetailsLead = $$("#evDetailsLead");
+const evNotes = $$("#evNotes");
+const evForbidden = $$("#evForbidden");
+const evDesc = $$("#evDesc");
+const evCloseDetails = $$("#evCloseDetails");
 
-$("#doLogin").onclick=()=>{
-  const email=$("#loginEmail").value.trim().toLowerCase();
-  const pass=$("#loginPass").value.trim();
-  const role=$("#loginRole").value;
-  const u=data.users.find(x=>x.email===email && x.pass===pass && x.role===role);
-  if(!u) return toast("Vale andmed või roll.");
-  data.session={email:u.email, role:u.role};
-  save(data); refreshAuth();
-  toast("Sisse logitud ✅");
-  authBack.classList.add("hidden");
-};
+/* Checkout */
+const coBack = $$("#coBack");
+const coLine = $$("#coLine");
+const orderLines = $$("#orderLines");
+const orderTotal = $$("#orderTotal");
+const firstName = $$("#firstName");
+const lastName = $$("#lastName");
+const email = $$("#email");
+const c1 = $$("#c1");
+const c2 = $$("#c2");
+const payBtn = $$("#payBtn");
+const mailHint = $$("#mailHint");
 
-$("#btnLogout").onclick=()=>{
-  data.session={email:null, role:null};
-  save(data); refreshAuth();
-  toast("Logisid välja.");
-  location.hash="#home";
-};
+/* Account */
+const meEmail = $$("#meEmail");
+const meFirst = $$("#meFirst");
+const meLast = $$("#meLast");
+const meLang = $$("#meLang");
+const saveMe = $$("#saveMe");
+const modeBuyer = $$("#modeBuyer");
+const modeOrganizer = $$("#modeOrganizer");
+const modeHint = $$("#modeHint");
 
-$("#btnDashboard").onclick=()=>location.hash="#org";
+const orgStatus = $$("#orgStatus");
+const saveProfile = $$("#saveProfile");
+const savePayout = $$("#savePayout");
 
-/* ========================= PAGES ========================= */
-const pages={
-  home:$("#pageHome"),
-  event:$("#pageEvent"),
-  checkout:$("#pageCheckout"),
-  org:$("#pageOrg"),
-};
-const show=(name)=>{
-  Object.values(pages).forEach(p=>p.classList.remove("active"));
+const p_company = $$("#p_company");
+const p_reg = $$("#p_reg");
+const p_vat = $$("#p_vat");
+const p_country = $$("#p_country");
+const p_address = $$("#p_address");
+const p_contact = $$("#p_contact");
+const p_phone = $$("#p_phone");
+const p_email = $$("#p_email");
+const p_terms = $$("#p_terms");
+const p_iban = $$("#p_iban");
+const p_bank = $$("#p_bank");
+
+const newEventBtn = $$("#newEventBtn");
+const orgList = $$("#orgList");
+const editMeta = $$("#editMeta");
+const saveEventBtn = $$("#saveEventBtn");
+const deleteEventBtn = $$("#deleteEventBtn");
+const addTicketBtn = $$("#addTicketBtn");
+const ticketEditor = $$("#ticketEditor");
+
+const f_title = $$("#f_title");
+const f_category = $$("#f_category");
+const f_city = $$("#f_city");
+const f_start = $$("#f_start");
+const f_doors = $$("#f_doors");
+const f_age = $$("#f_age");
+const f_location = $$("#f_location");
+const f_image = $$("#f_image");
+const f_desc = $$("#f_desc");
+const f_notes = $$("#f_notes");
+const f_forbidden = $$("#f_forbidden");
+
+const kpiRevenue = $$("#kpiRevenue");
+const kpiTickets = $$("#kpiTickets");
+const kpiOrders = $$("#kpiOrders");
+const kpiEvents = $$("#kpiEvents");
+const analyticsRows = $$("#analyticsRows");
+
+/* ===================== HELPERS ===================== */
+function getUsers(){ return read(LS.USERS, []); }
+function setUsers(u){ write(LS.USERS, u); }
+function getEvents(){ return read(LS.EVENTS, []); }
+function setEvents(e){ write(LS.EVENTS, e); }
+function getOrders(){ return read(LS.ORDERS, []); }
+function setOrders(o){ write(LS.ORDERS, o); }
+
+function getMe(){
+  if (!session?.userId) return null;
+  return getUsers().find(u => u.id === session.userId) || null;
+}
+
+function requireAuthOrOpenModal() {
+  if (!session?.userId) { openAuth(); return false; }
+  return true;
+}
+
+function setPage(name) {
+  Object.values(pages).forEach(p => p.classList.remove("active"));
   pages[name].classList.add("active");
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+function setHash(h){ location.hash = h; }
+
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  // Estonian style: R 27. VEEBRUAR • 22:00
+  const wd = ["P","E","T","K","N","R","L"][d.getDay()];
+  const day = d.getDate();
+  const month = d.toLocaleString("et-EE",{month:"long"}).toUpperCase();
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mm = String(d.getMinutes()).padStart(2,"0");
+  return `${wd} ${day}. ${month} • ${hh}:${mm}`;
+}
+
+function toLocalInput(iso){
+  const d = new Date(iso);
+  const pad = (n)=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function clampText(s, max=140){
+  s = (s||"").trim();
+  if (s.length<=max) return s;
+  return s.slice(0,max-1) + "…";
+}
+
+/* ===================== NAV / AUTH UI ===================== */
+function refreshTopbar() {
+  const me = getMe();
+  if (!me) {
+    btnAuth.classList.remove("hidden");
+    btnAccount.classList.add("hidden");
+    btnLogout.classList.add("hidden");
+    return;
+  }
+  btnAuth.classList.add("hidden");
+  btnAccount.classList.remove("hidden");
+  btnLogout.classList.remove("hidden");
+}
+
+function openAuth(){
+  authBack.classList.remove("hidden");
+  tabLogin.classList.add("active");
+  tabRegister.classList.remove("active");
+  loginView.classList.remove("hidden");
+  registerView.classList.add("hidden");
+}
+function closeAuth(){ authBack.classList.add("hidden"); }
+
+tabLogin.onclick = () => {
+  tabLogin.classList.add("active");
+  tabRegister.classList.remove("active");
+  loginView.classList.remove("hidden");
+  registerView.classList.add("hidden");
+};
+tabRegister.onclick = () => {
+  tabRegister.classList.add("active");
+  tabLogin.classList.remove("active");
+  registerView.classList.remove("hidden");
+  loginView.classList.add("hidden");
+};
+authClose.onclick = closeAuth;
+authBack.addEventListener("click", (e)=>{ if(e.target===authBack) closeAuth(); });
+
+btnAuth.onclick = openAuth;
+btnAccount.onclick = () => { if(requireAuthOrOpenModal()) setHash("#account/me"); };
+btnLogout.onclick = () => {
+  session = null;
+  write(LS.SESSION, null);
+  toast("Oled välja logitud.");
+  refreshTopbar();
+  setHash("#home");
 };
 
-let selectedEventId=null;
-let cart=null;
-
-const remaining=(t)=>t.total - t.sold;
-const minPrice=(ev)=>Math.min(...ev.tickets.map(t=>t.price));
-
-/* ========================= HOME LIST ========================= */
-$("#city").value = data.settings.city || "";
-
-const list=()=>{
-  const q=($("#q").value||"").trim().toLowerCase();
-  const city=$("#city").value || "";
-  data.settings.city=city; save(data);
-
-  let items=[...data.events];
-
-  if(q){
-    items=items.filter(ev => (ev.title+" "+ev.organizer+" "+ev.location+" "+ev.category+" "+(ev.desc||"")).toLowerCase().includes(q));
+/* ===================== AUTH ACTIONS ===================== */
+async function sendAccountEmail(to, type) {
+  // type: 'welcome'
+  try{
+    const res = await fetch("/api/send-email",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ type, to })
+    });
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error||"Email error");
+    return true;
+  }catch(e){
+    // Works even without email provider
+    return false;
   }
-  if(city && city!=="all"){
-    items=items.filter(ev => (ev.city||"").toLowerCase()===city);
-  }
+}
 
-  items.sort((a,b)=>new Date(a.start)-new Date(b.start));
-  $("#countText").textContent = items.length ? `${items.length} tulemust` : `Tulemusi pole`;
+doRegisterBtn.onclick = async () => {
+  const e = ($$("#regEmail").value||"").trim().toLowerCase();
+  const p = ($$("#regPass").value||"").trim();
+  if (!e || !p || p.length < 6) return toast("Sisesta korrektne e-mail ja vähemalt 6 tähemärgiga parool.");
 
-  const grid=$("#eventGrid");
-  grid.innerHTML="";
+  const users = getUsers();
+  if (users.some(u => u.email === e)) return toast("See e-mail on juba kasutusel.");
 
-  for(const ev of items){
-    const card=document.createElement("div");
-    card.className="card";
-    card.innerHTML=`
-      <div class="thumb"><img src="${ev.image}" alt="${ev.title}"></div>
-      <div class="cardBody">
-        <h3 class="cardTitle">${ev.title}</h3>
-        <div class="cardMeta">${fmt(ev.start)} • ${ev.location}</div>
-        <div class="cardBottom">
-          <div class="cardPrice">Al. ${money(minPrice(ev))}</div>
-          <div class="cardCta">Osta pilet</div>
+  const u = {
+    id: uid(),
+    email: e,
+    pass: p,
+    first: "",
+    last: "",
+    lang: "et",
+    org: { enabled:false, profileComplete:false, payoutComplete:false, status:"—" }
+  };
+  users.push(u);
+  setUsers(users);
+
+  // auto login
+  session = { userId: u.id, mode: "buyer" };
+  write(LS.SESSION, session);
+
+  closeAuth();
+  refreshTopbar();
+  toast("Konto loodud ✅");
+
+  const okMail = await sendAccountEmail(e, "welcome");
+  if (okMail) toast("Saatsime kinnituse e-mailile ✅");
+  else toast("E-mail teavitus: demo-režiim (RESEND puudub).");
+
+  setHash("#account/me");
+};
+
+doLoginBtn.onclick = () => {
+  const e = ($$("#loginEmail").value||"").trim().toLowerCase();
+  const p = ($$("#loginPass").value||"").trim();
+  const users = getUsers();
+  const u = users.find(x => x.email === e && x.pass === p);
+  if (!u) return toast("Vale e-mail või parool.");
+  session = { userId: u.id, mode: "buyer" };
+  write(LS.SESSION, session);
+  closeAuth();
+  refreshTopbar();
+  toast("Tere tulemast tagasi 👋");
+  setHash("#home");
+};
+
+/* ===================== HOME / SEARCH ===================== */
+function eventMatches(ev, q, city){
+  const qq = (q||"").trim().toLowerCase();
+  const okQ = !qq || (
+    ev.title.toLowerCase().includes(qq) ||
+    (ev.organizerName||"").toLowerCase().includes(qq) ||
+    (ev.location||"").toLowerCase().includes(qq)
+  );
+  const okCity = !city || city === "all" || ev.city === city;
+  return okQ && okCity && ev.published;
+}
+
+function renderHome() {
+  const q = qInput.value;
+  const city = citySelect.value;
+
+  const evs = getEvents()
+    .filter(ev => eventMatches(ev, q, city))
+    .sort((a,b)=> new Date(a.startISO)-new Date(b.startISO));
+
+  countText.textContent = evs.length ? `${evs.length} tulemust` : "Tulemusi ei leitud";
+
+  eventGrid.innerHTML = evs.map(ev => {
+    const dt = fmtDateTime(ev.startISO);
+    return `
+      <article class="card" data-id="${ev.id}">
+        <div class="cardMedia">
+          <img src="${ev.image}" alt="${escapeHtml(ev.title)}">
+          <div class="cardShade"></div>
         </div>
-      </div>
+        <div class="cardBody">
+          <div class="cardMeta">
+            <span class="pill">${cityName(ev.city)}</span>
+            <span class="pill">${dt}</span>
+          </div>
+          <div class="cardTitle">${escapeHtml(ev.title)}</div>
+          <div class="cardMeta">
+            <span>${escapeHtml(ev.location)}</span>
+          </div>
+        </div>
+      </article>
     `;
-    card.onclick=()=>{ location.hash=`#event-${ev.id}`; };
-    grid.appendChild(card);
-  }
+  }).join("");
 
-  if(!items.length){
-    grid.innerHTML=`<div class="card" style="grid-column:1/-1"><div class="cardBody"><div class="muted" style="font-weight:900">Üritusi ei leitud.</div></div></div>`;
-  }
-};
-
-$("#doSearch").onclick=list;
-$("#q").addEventListener("input", list);
-$("#city").addEventListener("change", list);
-
-/* ========================= EVENT RENDER ========================= */
-const descToHtml=(text)=>{
-  const safe=(text||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  return safe
-    .split(/\n{2,}/g)
-    .map(p=>p.trim())
-    .filter(Boolean)
-    .map(p=>`<p>${p.replace(/\n/g,"<br>")}</p>`)
-    .join("");
-};
-
-const renderEvent=(ev)=>{
-  $("#evHeroImg").src=ev.image;
-  $("#evHeroImg").alt=ev.title;
-
-  const d=new Date(ev.start);
-  const day = d.toLocaleString("et-EE", { weekday:"short" }).toUpperCase();
-  const date = d.toLocaleDateString("et-EE",{ day:"2-digit", month:"long" }).toUpperCase();
-  const time = d.toLocaleTimeString("et-EE",{ hour:"2-digit", minute:"2-digit" });
-
-  $("#evTopMeta").textContent = `${day} ${date} • ${ev.location} • ${time}`;
-  $("#evTitle").textContent = ev.title;
-
-  const badges=$("#evBadges");
-  badges.innerHTML="";
-  const b1=document.createElement("div"); b1.textContent=(ev.city||"").toUpperCase();
-  const b2=document.createElement("div"); b2.textContent=`Uksed ${ev.doors || time}`;
-  const b3=document.createElement("div"); b3.textContent=`Vanus ${ev.age || "—"}`;
-  badges.appendChild(b1); badges.appendChild(b2); badges.appendChild(b3);
-
-  $("#evWhen").textContent = fmt(ev.start);
-  $("#evWhere").textContent = ev.location;
-  $("#evOrg2").textContent = ev.organizer || "—";
-  $("#evAge").textContent = ev.age || "—";
-  $("#evDesc").innerHTML = descToHtml(ev.desc);
-
-  const fb=$("#evLink");
-  fb.href = (ev.socials && ev.socials[0] && ev.socials[0].url) ? ev.socials[0].url : "#";
-
-  const notes=$("#evNotes");
-  notes.innerHTML="";
-  (ev.notes||[]).forEach(n=>{
-    const li=document.createElement("li");
-    li.textContent=n;
-    notes.appendChild(li);
+  $$$(".card", eventGrid).forEach(el => {
+    el.onclick = () => setHash(`#event/${el.dataset.id}`);
   });
+}
 
-  const grid=$("#ticketsGrid");
-  grid.innerHTML="";
+doSearch.onclick = renderHome;
+qInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter") renderHome(); });
+citySelect.onchange = renderHome;
 
-  ev.tickets.forEach(t=>{
-    const rem=remaining(t);
+/* ===================== EVENT PAGE ===================== */
+function availableLeft(ev, t){
+  const sold = Number(t.sold||0);
+  const limit = Number(t.limit||0);
+  if (!limit) return Infinity;
+  return Math.max(0, limit - sold);
+}
 
-    const box=document.createElement("div");
-    box.className="ticketCard";
-    box.innerHTML=`
-      <div class="ticketTop2">
+function renderEvent(evId) {
+  const ev = getEvents().find(e => e.id === evId);
+  if (!ev) { toast("Üritust ei leitud."); return setHash("#home"); }
+  currentEventId = ev.id;
+
+  setPage("event");
+  evDetails.classList.add("hidden");
+
+  evHeroBg.src = ev.image;
+  evHeroBg.alt = ev.title;
+
+  evTitle.textContent = ev.title;
+  evTopMeta.textContent = `${fmtDateTime(ev.startISO)} • ${escapeHtml(ev.location)}`;
+
+  evBadges.innerHTML = `
+    <span class="pill">Linn: ${cityName(ev.city)}</span>
+    <span class="pill">Uksed: ${escapeHtml(ev.doors||"—")}</span>
+    <span class="pill">Vanusepiirang: ${escapeHtml(ev.age||"—")}</span>
+  `;
+
+  evLink.href = ev.fb || "#";
+  evLink.style.pointerEvents = ev.fb ? "auto" : "none";
+  evLink.style.opacity = ev.fb ? "1" : ".55";
+
+  evPoster.src = ev.image;
+  evPoster.alt = ev.title;
+
+  evKicker.textContent = `${escapeHtml(ev.organizerName||"Korraldaja")} • ${cityName(ev.city)}`;
+  evShort.textContent = ev.short || clampText(ev.desc, 180);
+
+  ticketsGrid.innerHTML = ev.tickets.map(t => {
+    const left = availableLeft(ev, t);
+    const leftText = left === Infinity ? "" : `${left} alles`;
+    const disabled = left === 0 ? "disabled" : "";
+    return `
+      <div class="ticketCard" data-tid="${t.id}">
         <div>
-          <div class="ticketType">PILET</div>
-          <div class="ticketPrice2">${money(t.price)}</div>
+          <div class="ticketK">Pilet</div>
+          <div class="ticketPrice">${money(t.price)}</div>
+          <div class="ticketName">${escapeHtml(t.name)}</div>
+          <div class="ticketSub">${escapeHtml(t.sub||"")}${leftText ? `<div class="muted" style="margin-top:6px">${leftText}</div>` : ""}</div>
         </div>
-      </div>
 
-      <div class="ticketName2">${t.name}</div>
-      <div class="ticketFee">${t.desc ? t.desc : ""}</div>
-      <div class="ticketLimit">${rem<=0 ? "Välja müüdud" : `${rem} alles`}</div>
-
-      <div class="ticketBottom2">
-        <div class="stepper2">
-          <button data-act="minus" ${rem<=0?"disabled":""}>−</button>
-          <input value="1" inputmode="numeric" ${rem<=0?"disabled":""}>
-          <button data-act="plus" ${rem<=0?"disabled":""}>+</button>
+        <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px">
+          <div class="qtyBox" ${disabled ? 'style="opacity:.55"' : ""}>
+            <button class="qtyBtn" data-act="minus" ${disabled}>−</button>
+            <div class="qtyVal" data-qty>1</div>
+            <button class="qtyBtn" data-act="plus" ${disabled}>+</button>
+          </div>
+          <button class="buyBtn" data-buy ${disabled}>Osta</button>
         </div>
-        <button class="buyBtn2" ${rem<=0?"disabled":""}>Osta</button>
       </div>
     `;
+  }).join("");
 
-    const input=box.querySelector("input");
-    const minus=box.querySelector('[data-act="minus"]');
-    const plus=box.querySelector('[data-act="plus"]');
-    const buy=box.querySelector(".buyBtn2");
+  // ticket handlers
+  $$$(".ticketCard", ticketsGrid).forEach(card => {
+    const qtyEl = $$("[data-qty]", card);
+    const minus = $$('[data-act="minus"]', card);
+    const plus = $$('[data-act="plus"]', card);
+    const buy = $$("[data-buy]", card);
 
-    const clamp=()=>{
-      let v=parseInt(input.value||"1",10);
-      if(isNaN(v)) v=1;
-      v=Math.max(1, Math.min(v, rem));
-      input.value=v;
-      return v;
+    const ticketId = card.dataset.tid;
+    const t = ev.tickets.find(x => x.id === ticketId);
+    const left = availableLeft(ev, t);
+    let qty = 1;
+    const renderQty = () => { qtyEl.textContent = String(qty); };
+
+    minus.onclick = () => { qty = Math.max(1, qty - 1); renderQty(); };
+    plus.onclick = () => {
+      const max = left === Infinity ? 99 : Math.max(1, left);
+      qty = Math.min(max, qty + 1);
+      renderQty();
     };
 
-    if(rem>0){
-      minus.onclick=()=>{input.value=parseInt(input.value||"1",10)-1; clamp();};
-      plus.onclick=()=>{input.value=parseInt(input.value||"1",10)+1; clamp();};
-      input.oninput=clamp;
+    buy.onclick = () => {
+      checkoutCart = { eventId: ev.id, items: [{ ticketId, qty }] };
+      setHash("#checkout");
+    };
 
-      buy.onclick=()=>{
-        const qty=clamp();
-        cart={ eventId: ev.id, items:[{ticketId:t.id, name:t.name, price:t.price, qty}] };
-        location.hash="#checkout";
-      };
-    }
-
-    grid.appendChild(box);
+    renderQty();
   });
 
-  $("#evMore").classList.add("hidden");
-  $("#evMoreBtn").textContent="Loe rohkem";
-};
+  evMoreBtn.onclick = () => openDetails(ev);
+  evCloseDetails.onclick = () => evDetails.classList.add("hidden");
+  evBack.onclick = () => history.length > 1 ? history.back() : setHash("#home");
+}
 
-$("#evBack").onclick=()=>location.hash="#home";
-$("#evMoreBtn").onclick=()=>{
-  const more=$("#evMore");
-  const open=!more.classList.contains("hidden");
-  more.classList.toggle("hidden");
-  $("#evMoreBtn").textContent = open ? "Loe rohkem" : "Sulge";
-};
+function openDetails(ev){
+  evDetailsMeta.textContent = `${fmtDateTime(ev.startISO)} • ${escapeHtml(ev.location)}, ${cityName(ev.city)}`;
+  evDetailsTitle.textContent = ev.title;
+  evDetailsLead.textContent = ev.short || clampText(ev.desc, 180);
 
-/* ========================= CHECKOUT ========================= */
-const renderCheckout=()=>{
-  const ev=data.events.find(e=>e.id===cart?.eventId);
-  if(!ev) return;
+  evNotes.innerHTML = (ev.notes||[]).map(x => `<li>${escapeHtml(x)}</li>`).join("") || `<li>—</li>`;
+  evForbidden.innerHTML = (ev.forbidden||[]).map(x => `<li>${escapeHtml(x)}</li>`).join("") || `<li>—</li>`;
 
-  $("#coLine").textContent=`${ev.title} • ${fmt(ev.start)} • ${ev.location}`;
-  $("#mailHint").textContent="(Demo) Päris QR+email teeme järgmise sammuna.";
+  evDesc.innerHTML = nl2p(ev.desc || "");
 
-  const lines=$("#orderLines");
-  lines.innerHTML="";
+  evDetails.classList.remove("hidden");
+  evDetails.scrollIntoView({behavior:"smooth", block:"start"});
+}
 
-  const total=cart.items.reduce((s,i)=>s+i.price*i.qty,0);
+/* ===================== CHECKOUT ===================== */
+coBack.onclick = () => history.length > 1 ? history.back() : setHash("#home");
 
-  cart.items.forEach(i=>{
-    const row=document.createElement("div");
-    row.className="orderLine";
-    row.innerHTML=`<span><b>${i.name}</b><small>${i.qty} × ${money(i.price)}</small></span><span>${money(i.price*i.qty)}</span>`;
-    lines.appendChild(row);
-  });
+function renderCheckout() {
+  if (!checkoutCart?.eventId) { toast("Ostukorv on tühi."); return setHash("#home"); }
 
-  $("#orderTotal").textContent=money(total);
-};
+  const ev = getEvents().find(e => e.id === checkoutCart.eventId);
+  if (!ev) return setHash("#home");
 
-$("#coBack").onclick=()=>location.hash=`#event-${cart?.eventId||selectedEventId||""}`;
+  setPage("checkout");
+  const items = checkoutCart.items;
 
-$("#payBtn").onclick=()=>{
-  if(!cart) return;
-  const fn=$("#firstName").value.trim();
-  const ln=$("#lastName").value.trim();
-  const em=$("#email").value.trim();
-  if(!fn||!ln||!em) return toast("Täida kõik väljad.");
-  if(!$("#c1").checked || !$("#c2").checked) return toast("Tee mõlemad nõusolekud.");
+  coLine.textContent = ev.title;
 
-  const ev=data.events.find(e=>e.id===cart.eventId);
-  if(!ev) return toast("Üritust ei leitud.");
-
-  for(const it of cart.items){
-    const t=ev.tickets.find(x=>x.id===it.ticketId);
-    if(!t) return toast("Piletitüüp puudu.");
-    if(it.qty>remaining(t)) return toast("Pole piisavalt pileteid.");
-  }
-
-  for(const it of cart.items){
-    const t=ev.tickets.find(x=>x.id===it.ticketId);
-    t.sold += it.qty;
-  }
-
-  data.orders.push({
-    id:uid(),
-    eventId:ev.id,
-    buyerName:`${fn} ${ln}`,
-    buyerEmail:em,
-    items:cart.items,
-    total:cart.items.reduce((s,i)=>s+i.price*i.qty,0),
-    createdAt:new Date().toISOString()
-  });
-
-  save(data);
-  toast("Tellimus tehtud ✅ (demo)");
-  cart=null;
-  location.hash="#home";
-  list();
-};
-
-/* ========================= ORGANIZER: FULL GAME ========================= */
-const requireOrganizer=()=>{
-  const ok=!!data.session.email && data.session.role==="organizer";
-  if(!ok){
-    toast("Logi korraldajana sisse.");
-    authBack.classList.remove("hidden");
-  }
-  return ok;
-};
-
-const setOrgTab=(name)=>{
-  const tabs=["orgProfile","orgEvents","orgAnalytics"];
-  tabs.forEach(id=>$("#"+id).classList.add("hidden"));
-  $("#"+name).classList.remove("hidden");
-};
-
-$("#tabProfile").onclick=()=>setOrgTab("orgProfile");
-$("#tabEvents").onclick=()=>setOrgTab("orgEvents");
-$("#tabAnalytics").onclick=()=>{ setOrgTab("orgAnalytics"); renderAnalytics(); };
-
-let editingEventId=null;
-
-const myEvents=()=>{
-  const email=data.session.email;
-  return data.events.filter(e=>e.ownerEmail===email);
-};
-
-const profileFor=()=> data.organizerProfiles[data.session.email] || null;
-
-const profileComplete=(p)=>{
-  if(!p) return false;
-  const req=["company","reg","country","address","contact","phone","email","iban","terms"];
-  return req.every(k=>String(p[k]||"").trim().length>0);
-};
-
-const refreshProfileStatus=()=>{
-  const p=profileFor();
-  $("#profileStatus").textContent = profileComplete(p) ? "Profiil: OK ✅" : "Profiil: puudulik ⚠️";
-};
-
-const loadProfileToForm=()=>{
-  const p=profileFor() || {};
-  $("#p_company").value=p.company||"";
-  $("#p_reg").value=p.reg||"";
-  $("#p_vat").value=p.vat||"";
-  $("#p_country").value=p.country||"Eesti";
-  $("#p_address").value=p.address||"";
-  $("#p_contact").value=p.contact||"";
-  $("#p_phone").value=p.phone||"";
-  $("#p_email").value=p.email||"";
-  $("#p_iban").value=p.iban||"";
-  $("#p_bank").value=p.bank||"";
-  $("#p_terms").checked=!!p.terms;
-  refreshProfileStatus();
-};
-
-$("#saveProfileBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
-
-  const p={
-    company:$("#p_company").value.trim(),
-    reg:$("#p_reg").value.trim(),
-    vat:$("#p_vat").value.trim(),
-    country:$("#p_country").value.trim(),
-    address:$("#p_address").value.trim(),
-    contact:$("#p_contact").value.trim(),
-    phone:$("#p_phone").value.trim(),
-    email:$("#p_email").value.trim(),
-    iban:$("#p_iban").value.trim(),
-    bank:$("#p_bank").value.trim(),
-    terms: $("#p_terms").checked ? "yes" : ""
-  };
-
-  data.organizerProfiles[data.session.email]=p;
-  save(data);
-  refreshProfileStatus();
-  toast(profileComplete(p) ? "Profiil salvestatud ✅" : "Profiil salvestatud, aga täida * väljad.");
-};
-
-const resetEventForm=()=>{
-  editingEventId=null;
-  $("#editMeta").textContent="Uus üritus";
-  $("#deleteEventBtn").classList.add("hidden");
-
-  $("#f_title").value="";
-  $("#f_category").value="";
-  $("#f_city").value="tallinn";
-  $("#f_start").value="";
-  $("#f_end").value="";
-  $("#f_doors").value="";
-  $("#f_age").value="18+";
-  $("#f_organizer").value=(profileFor()?.company || data.session.email.split("@")[0]);
-  $("#f_location").value="";
-  $("#f_image").value="";
-  $("#f_desc").value="";
-  $("#f_notes").value="";
-  $("#ticketEditor").innerHTML="";
-};
-
-const addTicketRow=(t=null)=>{
-  const row=document.createElement("div");
-  row.className="ticketRow";
-  row.dataset.id=t?.id || uid();
-  row.innerHTML=`
-    <div class="ticketRowTop">
-      <b>Pilet</b>
-      <button class="btn btn-ghost" data-act="remove">Eemalda</button>
-    </div>
-    <div class="ticketRowGrid">
-      <div class="field"><label>Nimi *</label><input data-k="name" value="${t?.name||""}" placeholder="Tavapilet"></div>
-      <div class="field"><label>Hind (€) *</label><input data-k="price" inputmode="decimal" value="${t?.price??""}" placeholder="15"></div>
-      <div class="field"><label>Kogus *</label><input data-k="total" inputmode="numeric" value="${t?.total??""}" placeholder="200"></div>
-    </div>
-    <div class="field" style="margin-top:10px">
-      <label>Kirjeldus (valikuline)</label>
-      <input data-k="desc" value="${t?.desc||""}" placeholder="Sisenemine kuni 01:00">
-    </div>
-  `;
-  row.querySelector('[data-act="remove"]').onclick=()=>row.remove();
-  $("#ticketEditor").appendChild(row);
-};
-
-$("#addTicketBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
-  addTicketRow();
-};
-
-const renderOrgList=()=>{
-  const listEl=$("#orgList");
-  listEl.innerHTML="";
-
-  const items=myEvents().sort((a,b)=>new Date(a.start)-new Date(b.start));
-  if(!items.length){
-    listEl.innerHTML=`<div class="muted" style="font-weight:900">Sul pole veel üritusi. Vajuta “Uus üritus”.</div>`;
-    return;
-  }
-
-  for(const ev of items){
-    const sold=ev.tickets.reduce((s,t)=>s+(t.sold||0),0);
-    const revenue=data.orders.filter(o=>o.eventId===ev.id).reduce((s,o)=>s+(o.total||0),0);
-
-    const box=document.createElement("div");
-    box.className="orgItem";
-    box.innerHTML=`
-      <div>
-        <b>${ev.title}</b>
-        <div class="muted">${fmt(ev.start)} • ${(ev.city||"").toUpperCase()} • ${ev.location}</div>
-        <div class="muted">Müüdud: ${sold} • Tulu: ${money(revenue)}</div>
-      </div>
-      <div class="orgItemActions">
-        <button class="btn btn-ghost" data-act="edit">Muuda</button>
-        <button class="btn btn-ghost" data-act="open">Ava</button>
+  let total = 0;
+  orderLines.innerHTML = items.map(it => {
+    const t = ev.tickets.find(x => x.id === it.ticketId);
+    const line = Number(t.price) * Number(it.qty);
+    total += line;
+    return `
+      <div class="lineRow">
+        <div>
+          <div style="font-weight:1100">${escapeHtml(t.name)}</div>
+          <div class="muted">${it.qty}x</div>
+        </div>
+        <div style="font-weight:1100">${money(line)}</div>
       </div>
     `;
-    box.querySelector('[data-act="edit"]').onclick=()=>loadEventToForm(ev.id);
-    box.querySelector('[data-act="open"]').onclick=()=>location.hash=`#event-${ev.id}`;
-    listEl.appendChild(box);
+  }).join("");
+
+  orderTotal.textContent = money(total);
+
+  mailHint.textContent = "Pärast ostu saad e-maili QR-piletiga (demo / päris saatmine sõltub RESEND seadistusest).";
+}
+
+payBtn.onclick = async () => {
+  if (!checkoutCart?.eventId) return;
+  const ev = getEvents().find(e => e.id === checkoutCart.eventId);
+  if (!ev) return;
+
+  const fn = (firstName.value||"").trim();
+  const ln = (lastName.value||"").trim();
+  const em = (email.value||"").trim().toLowerCase();
+  if (!fn || !ln || !em.includes("@")) return toast("Täida eesnimi, perenimi ja korrektne e-mail.");
+  if (!c1.checked || !c2.checked) return toast("Palun nõustu tingimustega (mõlemad kastid).");
+
+  // availability check
+  const events = getEvents();
+  const evNow = events.find(x => x.id === ev.id);
+  for (const it of checkoutCart.items) {
+    const t = evNow.tickets.find(x => x.id === it.ticketId);
+    const left = availableLeft(evNow, t);
+    if (left !== Infinity && it.qty > left) return toast("Vabandust, pileteid jäi vähemaks. Vähenda kogust.");
   }
+
+  // create tickets
+  const ticketInstances = [];
+  let total = 0;
+
+  for (const it of checkoutCart.items) {
+    const t = evNow.tickets.find(x => x.id === it.ticketId);
+    total += Number(t.price) * Number(it.qty);
+
+    // update sold
+    t.sold = Number(t.sold||0) + Number(it.qty);
+
+    for (let i=0;i<it.qty;i++){
+      ticketInstances.push({
+        code: "TR-" + uid().slice(0,10).toUpperCase(),
+        ticketName: t.name,
+        price: t.price,
+      });
+    }
+  }
+
+  // persist event changes
+  setEvents(events);
+
+  const order = {
+    id: uid(),
+    createdAt: Date.now(),
+    eventId: evNow.id,
+    eventTitle: evNow.title,
+    organizerName: evNow.organizerName,
+    buyer: { first: fn, last: ln, email: em },
+    total,
+    tickets: ticketInstances,
+  };
+
+  const orders = getOrders();
+  orders.push(order);
+  setOrders(orders);
+
+  // send email (serverless)
+  payBtn.disabled = true;
+  payBtn.textContent = "Saadan…";
+
+  try{
+    const res = await fetch("/api/send-email", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        type: "tickets",
+        to: em,
+        order,
+        event: {
+          title: evNow.title,
+          startISO: evNow.startISO,
+          location: evNow.location,
+          city: cityName(evNow.city),
+          image: evNow.image,
+        }
+      })
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error||"Email error");
+
+    toast("Ost tehtud ✅ QR-pilet saadeti e-mailile.");
+  }catch(e){
+    toast("Ost tehtud ✅ (e-mail demo-režiimis / RESEND puudub).");
+  }finally{
+    payBtn.disabled = false;
+    payBtn.textContent = "MAKSMA";
+  }
+
+  // reset cart and go home
+  checkoutCart = null;
+  firstName.value = "";
+  lastName.value = "";
+  email.value = "";
+  c1.checked = false;
+  c2.checked = false;
+  setHash("#home");
 };
 
-const loadEventToForm=(id)=>{
-  const ev=data.events.find(e=>e.id===id);
+/* ===================== ACCOUNT ===================== */
+function renderAccount(route = "me") {
+  if (!requireAuthOrOpenModal()) return;
+  setPage("account");
+
+  const me = getMe();
+  meEmail.textContent = me.email;
+  meFirst.value = me.first || "";
+  meLast.value = me.last || "";
+  meLang.value = me.lang || "et";
+
+  // mode
+  const isOrgUnlocked = !!me.org?.enabled;
+  const isOrgReady = !!me.org?.profileComplete && !!me.org?.payoutComplete;
+
+  modeBuyer.classList.toggle("btn-primary", session?.mode === "buyer");
+  modeOrganizer.classList.toggle("btn-primary", session?.mode === "organizer");
+  modeHint.textContent = isOrgUnlocked
+    ? (isOrgReady ? "Korraldaja vaade on aktiivne ja valmis müügiks." : "Korraldaja vaade on saadaval, kuid enne müüki täida 'Korraldaja andmed' ja 'Väljamaksed'.")
+    : "Korraldaja vaade avaneb pärast firma andmete täitmist.";
+
+  // sidebar navigation
+  $$$(".accLink").forEach(b => b.classList.remove("active"));
+  const map = {
+    me: "#accMe",
+    orgProfile: "#accOrgProfile",
+    orgPayout: "#accOrgPayout",
+    orgEvents: "#accOrgEvents",
+    orgAnalytics: "#accOrgAnalytics",
+  };
+  const targetId = map[route] || "#accMe";
+  const targetBtn = $$$(".accLink").find(b => b.dataset.acc === route);
+  if (targetBtn) targetBtn.classList.add("active");
+  $$$(".accPanel").forEach(p => p.classList.add("hidden"));
+  $$(targetId).classList.remove("hidden");
+
+  // org status pill
+  orgStatus.textContent = me.org?.status || "—";
+
+  // fill organizer profile fields
+  p_company.value = me.org?.company || "";
+  p_reg.value = me.org?.reg || "";
+  p_vat.value = me.org?.vat || "";
+  p_country.value = me.org?.country || "Eesti";
+  p_address.value = me.org?.address || "";
+  p_contact.value = me.org?.contact || "";
+  p_phone.value = me.org?.phone || "";
+  p_email.value = me.org?.email || me.email;
+  p_terms.checked = !!me.org?.terms;
+
+  // payout
+  p_iban.value = me.org?.iban || "";
+  p_bank.value = me.org?.bank || "";
+
+  if (route === "orgEvents") renderOrganizerEvents();
+  if (route === "orgAnalytics") renderAnalytics();
+}
+
+saveMe.onclick = () => {
+  const me = getMe();
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === me.id);
+  users[idx].first = meFirst.value.trim();
+  users[idx].last = meLast.value.trim();
+  users[idx].lang = meLang.value;
+  setUsers(users);
+  toast("Salvestatud ✅");
+};
+
+modeBuyer.onclick = () => {
+  if (!requireAuthOrOpenModal()) return;
+  session.mode = "buyer";
+  write(LS.SESSION, session);
+  toast("Ostja vaade ✅");
+  renderAccount("me");
+};
+
+modeOrganizer.onclick = () => {
+  if (!requireAuthOrOpenModal()) return;
+  const me = getMe();
+  if (!me.org?.enabled) return toast("Täida firma andmed — siis avaneb korraldaja vaade.");
+  session.mode = "organizer";
+  write(LS.SESSION, session);
+  toast("Korraldaja vaade ✅");
+  renderAccount("orgEvents");
+};
+
+/* ---- Sidebar clicks ---- */
+$$$(".accLink").forEach(btn => {
+  btn.onclick = () => {
+    const route = btn.dataset.acc;
+    setHash(`#account/${route}`);
+  };
+});
+
+/* ---- Organizer Profile Save ---- */
+saveProfile.onclick = async () => {
+  const me = getMe();
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === me.id);
+
+  // validate required
+  const required = [
+    ["Firma nimi", p_company.value],
+    ["Registrikood", p_reg.value],
+    ["Riik", p_country.value],
+    ["Aadress", p_address.value],
+    ["Kontaktisik", p_contact.value],
+    ["Telefon", p_phone.value],
+    ["Kontakt e-mail", p_email.value],
+  ];
+  for (const [label,val] of required){
+    if(!(val||"").trim()) return toast(`Puudub: ${label}`);
+  }
+  if(!p_terms.checked) return toast("Palun kinnita tingimused.");
+
+  // enable organizer mode now
+  users[idx].org = users[idx].org || {};
+  users[idx].org.enabled = true;
+
+  users[idx].org.company = p_company.value.trim();
+  users[idx].org.reg = p_reg.value.trim();
+  users[idx].org.vat = p_vat.value.trim();
+  users[idx].org.country = p_country.value.trim();
+  users[idx].org.address = p_address.value.trim();
+  users[idx].org.contact = p_contact.value.trim();
+  users[idx].org.phone = p_phone.value.trim();
+  users[idx].org.email = p_email.value.trim();
+  users[idx].org.terms = true;
+  users[idx].org.profileComplete = true;
+  users[idx].org.status = "Sisestatud";
+
+  setUsers(users);
+  toast("Korraldaja andmed salvestatud ✅");
+
+  // optional: email confirm (same endpoint, different template)
+  const okMail = await sendAccountEmail(users[idx].email, "organizer_profile");
+  if(okMail) toast("Saatsime e-mailile kinnituse ✅");
+  else toast("E-mail teavitus: demo-režiim.");
+
+  renderAccount("orgProfile");
+};
+
+/* ---- Payout Save ---- */
+savePayout.onclick = () => {
+  const me = getMe();
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === me.id);
+
+  if (!(p_iban.value||"").trim()) return toast("Puudub IBAN.");
+  users[idx].org = users[idx].org || {};
+  users[idx].org.iban = p_iban.value.trim();
+  users[idx].org.bank = p_bank.value.trim();
+  users[idx].org.payoutComplete = true;
+  users[idx].org.status = users[idx].org.profileComplete ? "Valmis" : (users[idx].org.status||"Sisestatud");
+
+  setUsers(users);
+  toast("Väljamaksed salvestatud ✅");
+  renderAccount("orgPayout");
+};
+
+/* ===================== ORGANIZER EVENTS (CRUD) ===================== */
+let editingEventId = null;
+
+function organizerCanPublish(me){
+  return !!me.org?.profileComplete && !!me.org?.payoutComplete;
+}
+
+function renderOrganizerEvents() {
+  const me = getMe();
+  if (!me) return;
+
+  // Ensure organizer mode selected visually
+  if (session?.mode !== "organizer" && me.org?.enabled) {
+    // do not force, but we can allow view
+  }
+
+  const events = getEvents().filter(e => e.ownerUserId === me.id);
+  orgList.innerHTML = events.length ? events
+    .sort((a,b)=>b.createdAt-a.createdAt)
+    .map(ev => `
+      <div class="orgItem" data-id="${ev.id}">
+        <div class="t">${escapeHtml(ev.title)}</div>
+        <div class="m">${cityName(ev.city)} • ${fmtDateTime(ev.startISO)} • ${ev.published ? "Avalik" : "Mustand"}</div>
+      </div>
+    `).join("")
+  : `<div class="muted">Pole ühtegi üritust. Vajuta “Uus üritus”.</div>`;
+
+  $$$(".orgItem", orgList).forEach(x => {
+    x.onclick = () => loadEventIntoForm(x.dataset.id);
+  });
+
+  // if no editing event, show blank
+  if (!editingEventId) blankEventForm();
+  updateAnalyticsHint();
+}
+
+function updateAnalyticsHint(){
+  const me = getMe();
+  if(!me) return;
+  const ready = organizerCanPublish(me);
+  const msg = ready
+    ? "✅ Korraldaja on valmis. Üritused saab avalikuks panna."
+    : "⚠️ Enne müüki täida 'Korraldaja andmed' + 'Väljamaksed'.";
+  editMeta.textContent = msg;
+}
+
+function blankEventForm() {
+  editingEventId = null;
+  deleteEventBtn.classList.add("hidden");
+
+  f_title.value = "";
+  f_category.value = "";
+  f_city.value = "tartu";
+  f_start.value = toLocalInput(new Date(Date.now()+1000*60*60*24*7).toISOString());
+  f_doors.value = "";
+  f_age.value = "18+";
+  f_location.value = "";
+  f_image.value = "";
+  f_desc.value = "";
+  f_notes.value = "";
+  f_forbidden.value = "";
+
+  ticketEditor.innerHTML = "";
+  addTicketRow({ name:"Regular bird", price:17, limit:100, sub:"" });
+}
+
+newEventBtn.onclick = () => {
+  const me = getMe();
+  if(!me) return;
+  if(!me.org?.enabled) return toast("Täida firma andmed (Korraldaja andmed).");
+  blankEventForm();
+  toast("Uus üritus — täida vorm ja salvesta.");
+};
+
+function loadEventIntoForm(id){
+  const ev = getEvents().find(e => e.id === id);
   if(!ev) return;
-  editingEventId=id;
+  editingEventId = ev.id;
+  deleteEventBtn.classList.remove("hidden");
 
-  $("#editMeta").textContent=`Muudad: ${ev.title}`;
-  $("#deleteEventBtn").classList.remove("hidden");
+  f_title.value = ev.title;
+  f_category.value = ev.category || "";
+  f_city.value = ev.city || "tartu";
+  f_start.value = toLocalInput(ev.startISO);
+  f_doors.value = ev.doors || "";
+  f_age.value = ev.age || "";
+  f_location.value = ev.location || "";
+  f_image.value = ev.image || "";
+  f_desc.value = ev.desc || "";
+  f_notes.value = (ev.notes||[]).join("\n");
+  f_forbidden.value = (ev.forbidden||[]).join("\n");
 
-  $("#f_title").value=ev.title||"";
-  $("#f_category").value=ev.category||"";
-  $("#f_city").value=ev.city||"tallinn";
-  $("#f_start").value=toLocalInput(ev.start);
-  $("#f_end").value=ev.end ? toLocalInput(ev.end) : "";
-  $("#f_doors").value=ev.doors || "";
-  $("#f_age").value=ev.age || "18+";
-  $("#f_organizer").value=ev.organizer || "";
-  $("#f_location").value=ev.location||"";
-  $("#f_image").value=ev.image||"";
-  $("#f_desc").value=ev.desc||"";
-  $("#f_notes").value=(ev.notes||[]).join("\n");
+  ticketEditor.innerHTML = "";
+  (ev.tickets||[]).forEach(t => addTicketRow(t));
+}
 
-  $("#ticketEditor").innerHTML="";
-  (ev.tickets||[]).forEach(t=>addTicketRow(t));
-};
+function addTicketRow(t = {}) {
+  const rowId = t.id || uid();
+  const el = document.createElement("div");
+  el.className = "ticketRow";
+  el.dataset.rowId = rowId;
 
-$("#newEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+  el.innerHTML = `
+    <div class="ticketRowTop">
+      <div class="field">
+        <label>Pileti nimi *</label>
+        <input data-k="name" value="${escapeAttr(t.name||"")}" placeholder="nt Regular bird">
+      </div>
+      <div class="field">
+        <label>Hind *</label>
+        <input data-k="price" type="number" min="0" step="0.01" value="${Number(t.price||0)}">
+      </div>
+      <div class="field">
+        <label>Limit *</label>
+        <input data-k="limit" type="number" min="0" step="1" value="${Number(t.limit||0)}">
+      </div>
+      <div class="ticketRowActions">
+        <button class="btn btn-danger" data-remove>−</button>
+      </div>
+    </div>
 
-  const p=profileFor();
-  if(!profileComplete(p)){
-    setOrgTab("orgProfile");
-    toast("Enne ürituse loomist täida firma ankeet (* väljad).");
-    loadProfileToForm();
-    return;
-  }
+    <div class="field" style="margin-top:10px">
+      <label>Alatekst (valikuline)</label>
+      <input data-k="sub" value="${escapeAttr(t.sub||"")}" placeholder="nt Sisenemine kuni 01:00">
+    </div>
+  `;
 
-  setOrgTab("orgEvents");
-  resetEventForm();
-  addTicketRow();
-  toast("Uus üritus: täida väljad ja salvesta.");
-};
+  $$("[data-remove]", el).onclick = () => el.remove();
+  ticketEditor.appendChild(el);
+}
 
-$("#saveEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+addTicketBtn.onclick = () => addTicketRow({ name:"", price:0, limit:0, sub:"" });
 
-  const p=profileFor();
-  if(!profileComplete(p)){
-    setOrgTab("orgProfile");
-    toast("Täida firma profiil lõpuni enne salvestamist.");
-    return;
-  }
-
-  const title=$("#f_title").value.trim();
-  const category=$("#f_category").value.trim();
-  const city=$("#f_city").value;
-  const startVal=$("#f_start").value;
-  const endVal=$("#f_end").value;
-  const doors=$("#f_doors").value.trim();
-  const age=$("#f_age").value.trim();
-  const organizer=$("#f_organizer").value.trim();
-  const location=$("#f_location").value.trim();
-  const image=$("#f_image").value.trim();
-  const desc=$("#f_desc").value.trim();
-  const notes=$("#f_notes").value.split("\n").map(x=>x.trim()).filter(Boolean);
-
-  if(!title||!category||!startVal||!age||!organizer||!location||!image||!desc){
-    return toast("Täida kõik * vajalikud väljad (pealkiri, kategooria, algus, vanus, korraldaja, asukoht, pilt, kirjeldus).");
-  }
-
-  const rows=[...$("#ticketEditor").querySelectorAll(".ticketRow")];
-  if(!rows.length) return toast("Lisa vähemalt 1 piletitüüp.");
-
-  const tickets=[];
+function readTicketRows(){
+  const rows = $$$(".ticketRow", ticketEditor);
+  const out = [];
   for(const r of rows){
-    const get=(k)=>r.querySelector(`[data-k="${k}"]`).value.trim();
-    const name=get("name");
-    const price=Number(get("price").replace(",","."));
-    const total=Number(get("total"));
-    const descT=get("desc");
-
-    if(!name) return toast("Piletinimi puudub.");
-    if(!Number.isFinite(price) || price<=0) return toast("Piletihind peab olema > 0.");
-    if(!Number.isFinite(total) || total<=0) return toast("Piletikogus peab olema > 0.");
-
-    const existingId=r.dataset.id;
-    const existingEv=editingEventId ? data.events.find(e=>e.id===editingEventId) : null;
-    const existingTicket=existingEv?.tickets?.find(t=>t.id===existingId);
-
-    tickets.push({
-      id:existingId || uid(),
-      name,
-      price,
-      total,
-      sold: existingTicket?.sold || 0,
-      desc: descT
+    const name = ($$('[data-k="name"]', r).value||"").trim();
+    const price = Number($$('[data-k="price"]', r).value||0);
+    const limit = Number($$('[data-k="limit"]', r).value||0);
+    const sub = ($$('[data-k="sub"]', r).value||"").trim();
+    if(!name) continue;
+    out.push({
+      id: r.dataset.rowId || uid(),
+      name, price, limit, sub,
+      sold: 0, fee: 0
     });
   }
+  return out;
+}
 
+saveEventBtn.onclick = () => {
+  const me = getMe();
+  if(!me) return;
+
+  if(!me.org?.enabled) return toast("Täida firma andmed (Korraldaja andmed).");
+
+  // validate required event fields
+  const req = [
+    ["Pealkiri", f_title.value],
+    ["Kategooria", f_category.value],
+    ["Algus", f_start.value],
+    ["Vanusepiirang", f_age.value],
+    ["Asukoht", f_location.value],
+    ["Poster URL", f_image.value],
+    ["Kirjeldus", f_desc.value],
+  ];
+  for(const [label, val] of req){
+    if(!(val||"").trim()) return toast(`Puudub: ${label}`);
+  }
+
+  const tickets = readTicketRows();
+  if(!tickets.length) return toast("Lisa vähemalt 1 piletitüüp.");
+
+  const events = getEvents();
+  let ev;
   if(editingEventId){
-    const ev=data.events.find(e=>e.id===editingEventId);
-    if(!ev) return toast("Üritust ei leitud.");
-    Object.assign(ev,{
-      title, category, city,
-      start: fromLocalInput(startVal),
-      end: endVal ? fromLocalInput(endVal) : null,
-      doors, age, organizer,
-      location, image, desc,
-      notes,
-      tickets,
-      ownerEmail: data.session.email
-    });
-    toast("Üritus salvestatud ✅");
-  } else {
-    data.events.push({
-      id:uid(),
-      ownerEmail:data.session.email,
-      title, category, city,
-      start: fromLocalInput(startVal),
-      end: endVal ? fromLocalInput(endVal) : null,
-      doors, age, organizer,
-      location, image, desc,
-      notes,
-      socials:[{label:"Facebook",url:"#"}],
-      tickets
-    });
-    toast("Üritus loodud ✅");
+    ev = events.find(x=>x.id===editingEventId);
+    if(!ev) return;
   }
 
-  save(data);
-  renderOrgList();
-  list();
+  const startISO = new Date(f_start.value).toISOString();
+  const notes = (f_notes.value||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const forbidden = (f_forbidden.value||"").split("\n").map(x=>x.trim()).filter(Boolean);
+
+  const canPublish = organizerCanPublish(me);
+
+  if(!ev){
+    ev = {
+      id: uid(),
+      ownerUserId: me.id,
+      organizerName: me.org?.company || "Korraldaja",
+      createdAt: Date.now(),
+      published: canPublish, // if ready -> auto publish, else draft
+      tickets: []
+    };
+    events.push(ev);
+  }
+
+  // preserve sold counters if ticket id matches
+  const oldTickets = ev.tickets || [];
+  const mergedTickets = tickets.map(t=>{
+    const old = oldTickets.find(x=>x.id===t.id) || oldTickets.find(x=>x.name===t.name);
+    return { ...t, sold: Number(old?.sold||0) };
+  });
+
+  ev.title = f_title.value.trim();
+  ev.category = f_category.value.trim();
+  ev.city = f_city.value;
+  ev.startISO = startISO;
+  ev.doors = f_doors.value || "";
+  ev.age = f_age.value.trim();
+  ev.location = f_location.value.trim();
+  ev.image = f_image.value.trim();
+  ev.desc = f_desc.value.trim();
+  ev.short = clampText(ev.desc.replace(/\s+/g," "), 160);
+  ev.notes = notes;
+  ev.forbidden = forbidden;
+  ev.fb = ev.fb || "";
+  ev.tickets = mergedTickets;
+  ev.organizerName = me.org?.company || ev.organizerName;
+  ev.published = canPublish ? true : false;
+
+  setEvents(events);
+  editingEventId = ev.id;
+
+  toast(canPublish ? "Üritus salvestatud ja avalik ✅" : "Üritus salvestatud mustandina (täida väljamaksed) ⚠️");
+  renderOrganizerEvents();
 };
 
-$("#deleteEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+deleteEventBtn.onclick = () => {
   if(!editingEventId) return;
-
-  data.events = data.events.filter(e=>e.id!==editingEventId);
-  data.orders = data.orders.filter(o=>o.eventId!==editingEventId);
-  save(data);
-
-  toast("Üritus kustutatud.");
-  resetEventForm();
-  renderOrgList();
-  list();
+  const ok = confirm("Kustutame ürituse?");
+  if(!ok) return;
+  const events = getEvents().filter(e => e.id !== editingEventId);
+  setEvents(events);
+  editingEventId = null;
+  blankEventForm();
+  toast("Kustutatud ✅");
+  renderOrganizerEvents();
 };
 
-const renderAnalytics=()=>{
-  const events=myEvents();
-  const ids=new Set(events.map(e=>e.id));
-  const orders=data.orders.filter(o=>ids.has(o.eventId));
+/* ===================== ANALYTICS ===================== */
+function renderAnalytics(){
+  const me = getMe();
+  if(!me) return;
 
-  const revenue=orders.reduce((s,o)=>s+(o.total||0),0);
-  const sold=events.reduce((s,ev)=>s+ev.tickets.reduce((a,t)=>a+(t.sold||0),0),0);
+  const events = getEvents().filter(e => e.ownerUserId === me.id);
+  const orders = getOrders().filter(o => {
+    const ev = getEvents().find(e=>e.id===o.eventId);
+    return ev?.ownerUserId === me.id;
+  });
 
-  $("#kpiRevenue").textContent = money(revenue);
-  $("#kpiTickets").textContent = String(sold);
-  $("#kpiOrders").textContent = String(orders.length);
-  $("#kpiEvents").textContent = String(events.length);
+  let revenue = 0;
+  let tickets = 0;
 
-  const tbody=$("#analyticsRows");
-  tbody.innerHTML="";
+  for(const o of orders){
+    revenue += Number(o.total||0);
+    tickets += (o.tickets||[]).length;
+  }
 
-  events
-    .sort((a,b)=>new Date(a.start)-new Date(b.start))
-    .forEach(ev=>{
-      const evOrders=orders.filter(o=>o.eventId===ev.id);
-      const evRev=evOrders.reduce((s,o)=>s+(o.total||0),0);
-      const evSold=ev.tickets.reduce((s,t)=>s+(t.sold||0),0);
+  kpiRevenue.textContent = money(revenue);
+  kpiTickets.textContent = String(tickets);
+  kpiOrders.textContent = String(orders.length);
+  kpiEvents.textContent = String(events.length);
 
-      const tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td>${ev.title}<div class="muted">${ev.city.toUpperCase()}</div></td>
-        <td>${fmt(ev.start)}</td>
-        <td>${evSold}</td>
-        <td>${money(evRev)}</td>
-        <td><button class="btn btn-ghost" data-open="${ev.id}">Ava</button></td>
+  analyticsRows.innerHTML = events
+    .sort((a,b)=>new Date(a.startISO)-new Date(b.startISO))
+    .map(ev=>{
+      const evOrders = orders.filter(o=>o.eventId===ev.id);
+      const evTickets = evOrders.reduce((sum,o)=>sum+(o.tickets||[]).length,0);
+      const evRevenue = evOrders.reduce((sum,o)=>sum+Number(o.total||0),0);
+      return `
+        <tr>
+          <td>${escapeHtml(ev.title)}</td>
+          <td>${fmtDateTime(ev.startISO)}</td>
+          <td>${evTickets}</td>
+          <td>${money(evRevenue)}</td>
+          <td><button class="btn btn-ghost" data-open="${ev.id}">Ava</button></td>
+        </tr>
       `;
-      tr.querySelector("button").onclick=()=>location.hash=`#event-${ev.id}`;
-      tbody.appendChild(tr);
-    });
-};
+    }).join("");
 
-/* ========================= ROUTER ========================= */
-const route=()=>{
-  const h=(location.hash||"#home").replace("#","");
+  $$$('[data-open]', analyticsRows).forEach(b=>{
+    b.onclick = () => setHash(`#event/${b.dataset.open}`);
+  });
+}
 
-  if(h==="home" || h==="events" || h===""){
-    show("home");
-    list();
+/* ===================== ROUTER ===================== */
+function route() {
+  refreshTopbar();
+
+  const h = (location.hash || "#home").replace("#","");
+  const [p, a] = h.split("/");
+
+  if (p === "home" || p === "") {
+    setPage("home");
+    renderHome();
     return;
   }
-
-  if(h.startsWith("event-")){
-    const id=h.replace("event-","");
-    selectedEventId=id;
-    const ev=data.events.find(e=>e.id===id);
-    if(!ev){location.hash="#home";return;}
-    show("event");
-    renderEvent(ev);
+  if (p === "events") {
+    setPage("home");
+    renderHome();
     return;
   }
-
-  if(h==="checkout"){
-    if(!cart){toast("Vali enne pilet."); location.hash="#home"; return;}
-    show("checkout");
+  if (p === "event") {
+    renderEvent(a);
+    return;
+  }
+  if (p === "checkout") {
     renderCheckout();
     return;
   }
-
-  if(h==="org"){
-    if(!requireOrganizer()){ location.hash="#home"; return; }
-    show("org");
-    setOrgTab("orgProfile");
-    loadProfileToForm();
-    renderOrgList();
-    renderAnalytics();
+  if (p === "account") {
+    const tab = a || "me";
+    renderAccount(tab);
     return;
   }
 
-  location.hash="#home";
-};
+  setPage("home");
+  renderHome();
+}
 
 window.addEventListener("hashchange", route);
-list();
 route();
+
+/* ===================== UTIL ===================== */
+function escapeHtml(s){
+  return String(s||"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function escapeAttr(s){ return escapeHtml(s).replaceAll("\n"," "); }
+function nl2p(s){
+  const safe = escapeHtml(s);
+  const parts = safe.split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);
+  return parts.map(p=>`<p style="margin:0 0 12px">${p.replaceAll("\n","<br>")}</p>`).join("") || "<p>—</p>";
+}
+
 
