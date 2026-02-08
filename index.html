@@ -89,71 +89,51 @@
 </main>
 
 <!-- =========================
-  EVENT PAGE (nagu su pilt)
+  EVENT PAGE (Ticketer-stiilis + "Loe edasi" toggle)
 ========================= -->
 <main class="page" id="pageEvent">
-  <section class="eventHero">
-    <div class="eventHero-media">
-      <img id="evImg" alt="">
-      <div class="eventHero-overlay"></div>
-    </div>
-
-    <div class="wrap eventHero-inner">
-      <button class="btn btn-ghost" id="evBack">← Tagasi</button>
-
-      <div class="eventHero-center">
-        <div class="muted" id="evOrg"></div>
-        <h1 class="eventHero-title" id="evTitle"></h1>
-        <div class="eventHero-meta" id="evMeta"></div>
-
-        <div class="eventHero-socials" id="evSocials"></div>
-      </div>
-    </div>
+  <section class="eventTop wrap">
+    <button class="evBack" id="evBack" aria-label="Tagasi">←</button>
+    <div class="eventTopMeta" id="evTopMeta"></div>
   </section>
 
-  <section class="wrap eventBody">
-    <div class="eventGrid2">
-      <div class="panel">
-        <div class="panelHead">
-          <div>
-            <div class="panelTitle">Piletid</div>
-            <div class="muted" id="evFrom"></div>
-          </div>
-        </div>
-        <div class="panelBody">
-          <div class="ticketsGrid" id="ticketsGrid"></div>
-        </div>
+  <section class="eventTitleWrap wrap">
+    <h1 class="evTitle" id="evTitle"></h1>
+
+    <div class="evActions">
+      <button class="btn evMoreBtn" id="evMoreBtn">Loe edasi →</button>
+    </div>
+
+    <div class="evBadges" id="evBadges"></div>
+    <a class="evLink" id="evLink" href="#" target="_blank" rel="noopener">FACEBOOK EVENT</a>
+  </section>
+
+  <section class="wrap evTicketsSection">
+    <div class="ticketCards" id="ticketsGrid"></div>
+  </section>
+
+  <section class="wrap evMore hidden" id="evMore">
+    <div class="evMoreGrid">
+      <div class="evMoreCard">
+        <div class="evMoreHead">Ürituse info</div>
+        <div class="evInfoRow"><span>Kuupäev</span><b id="evWhen"></b></div>
+        <div class="evInfoRow"><span>Asukoht</span><b id="evWhere"></b></div>
+        <div class="evInfoRow"><span>Korraldaja</span><b id="evOrg2"></b></div>
       </div>
 
-      <aside class="panel">
-        <div class="panelHead">
-          <div>
-            <div class="panelTitle">Ürituse info</div>
-            <div class="muted" id="evCat"></div>
-          </div>
-        </div>
-        <div class="panelBody">
-          <div class="infoBox">
-            <div class="infoRow"><span class="muted">Kuupäev</span><b id="evWhen"></b></div>
-            <div class="infoRow"><span class="muted">Asukoht</span><b id="evWhere"></b></div>
-            <div class="infoRow"><span class="muted">Korraldaja</span><b id="evOrg2"></b></div>
-          </div>
+      <div class="evMoreCard">
+        <div class="evMoreHead">Kirjeldus</div>
+        <p class="evDesc" id="evDesc"></p>
 
-          <div class="divider"></div>
-
-          <h3 class="h3">Mis toimub</h3>
-          <p class="p" id="evDesc"></p>
-
-          <h3 class="h3">Hea teada</h3>
-          <ul class="ul" id="evNotes"></ul>
-        </div>
-      </aside>
+        <div class="evMoreHead" style="margin-top:14px">Hea teada</div>
+        <ul class="evNotes" id="evNotes"></ul>
+      </div>
     </div>
   </section>
 </main>
 
 <!-- =========================
-  CHECKOUT PAGE (nagu su pilt)
+  CHECKOUT PAGE
 ========================= -->
 <main class="wrap page" id="pageCheckout">
   <div class="checkoutTop">
@@ -209,7 +189,9 @@
   </div>
 </main>
 
-<!-- AUTH MODAL -->
+<!-- =========================
+  AUTH MODAL
+========================= -->
 <div class="modalBack hidden" id="authBack">
   <div class="modal">
     <div class="modalHead">
