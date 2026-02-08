@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ticketrise</title>
 
-  <!-- CSS (OLULINE: relatiivne tee) -->
   <link rel="stylesheet" href="./styles.css" />
-
-  <!-- FONTS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -16,14 +13,10 @@
 
 <body>
 
-<!-- =========================
-  TOPBAR
-========================= -->
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <div class="brand">
-      <div class="logo">
-        <!-- Simple logo -->
+    <div class="brand" role="link" tabindex="0" onclick="location.hash='#home'">
+      <div class="logo" aria-hidden="true">
         <svg viewBox="0 0 64 64" width="28" height="28">
           <defs>
             <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1">
@@ -55,21 +48,15 @@
 </header>
 
 <!-- =========================
-  HOME
+  HOME PAGE
 ========================= -->
 <main class="wrap page active" id="pageHome">
-
   <div class="hero">
     <div class="hero-badge">⚡ Night-ready piletiplatvorm</div>
-    <h1 class="hero-title">
-      Leia elamus, mis <span class="glow">päriselt</span> loeb
-    </h1>
-    <p class="hero-sub">
-      Otsi üritusi, vali pilet ja saa QR-pilet e-mailile.
-    </p>
+    <h1 class="hero-title">Leia elamus, mis <span class="glow">päriselt</span> loeb</h1>
+    <p class="hero-sub">Otsi üritusi, vali pilet ja saa QR-pilet e-mailile.</p>
   </div>
 
-  <!-- SEARCH -->
   <div class="searchCard">
     <div class="searchRow">
       <div class="searchField">
@@ -89,27 +76,140 @@
         </select>
       </div>
 
-      <button class="btn btn-primary btn-search" id="doSearch">
-        Otsi
-      </button>
+      <button class="btn btn-primary btn-search" id="doSearch">Otsi</button>
     </div>
   </div>
 
-  <!-- EVENTS -->
   <div class="sectionHead">
     <h2>Üritused</h2>
     <div class="muted" id="countText"></div>
   </div>
 
-  <div class="grid" id="eventGrid">
-    <!-- app.js renderdab siia üritused -->
-  </div>
-
+  <div class="grid" id="eventGrid"></div>
 </main>
 
 <!-- =========================
-  AUTH MODAL
+  EVENT PAGE (nagu su pilt)
 ========================= -->
+<main class="page" id="pageEvent">
+  <section class="eventHero">
+    <div class="eventHero-media">
+      <img id="evImg" alt="">
+      <div class="eventHero-overlay"></div>
+    </div>
+
+    <div class="wrap eventHero-inner">
+      <button class="btn btn-ghost" id="evBack">← Tagasi</button>
+
+      <div class="eventHero-center">
+        <div class="muted" id="evOrg"></div>
+        <h1 class="eventHero-title" id="evTitle"></h1>
+        <div class="eventHero-meta" id="evMeta"></div>
+
+        <div class="eventHero-socials" id="evSocials"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap eventBody">
+    <div class="eventGrid2">
+      <div class="panel">
+        <div class="panelHead">
+          <div>
+            <div class="panelTitle">Piletid</div>
+            <div class="muted" id="evFrom"></div>
+          </div>
+        </div>
+        <div class="panelBody">
+          <div class="ticketsGrid" id="ticketsGrid"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="panelHead">
+          <div>
+            <div class="panelTitle">Ürituse info</div>
+            <div class="muted" id="evCat"></div>
+          </div>
+        </div>
+        <div class="panelBody">
+          <div class="infoBox">
+            <div class="infoRow"><span class="muted">Kuupäev</span><b id="evWhen"></b></div>
+            <div class="infoRow"><span class="muted">Asukoht</span><b id="evWhere"></b></div>
+            <div class="infoRow"><span class="muted">Korraldaja</span><b id="evOrg2"></b></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <h3 class="h3">Mis toimub</h3>
+          <p class="p" id="evDesc"></p>
+
+          <h3 class="h3">Hea teada</h3>
+          <ul class="ul" id="evNotes"></ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<!-- =========================
+  CHECKOUT PAGE (nagu su pilt)
+========================= -->
+<main class="wrap page" id="pageCheckout">
+  <div class="checkoutTop">
+    <button class="btn btn-ghost" id="coBack">←</button>
+    <div>
+      <div class="checkoutTitle">Tellimus</div>
+      <div class="muted" id="coLine"></div>
+    </div>
+  </div>
+
+  <div class="checkoutGrid">
+    <div class="panel">
+      <div class="panelHead"><div class="panelTitle">Tellija</div></div>
+      <div class="panelBody">
+        <div class="row2">
+          <div class="field">
+            <label>Eesnimi</label>
+            <input id="firstName" placeholder="Eesnimi">
+          </div>
+          <div class="field">
+            <label>Perenimi</label>
+            <input id="lastName" placeholder="Perenimi">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>E-mail</label>
+          <input id="email" placeholder="E-mail">
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="c1">
+          <span>Nõustun kasutustingimuste ja privaatsustingimustega.</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="c2">
+          <span>Mõistan, et pileteid müüb korraldaja.</span>
+        </label>
+
+        <button class="btn btn-primary btn-pay" id="payBtn">MAKSMA →</button>
+        <div class="muted" id="mailHint"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panelHead"><div class="panelTitle">Tellimus</div></div>
+      <div class="panelBody">
+        <div id="orderLines"></div>
+        <div class="divider"></div>
+        <div class="totalRow"><span>Kokku</span><span id="orderTotal"></span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- AUTH MODAL -->
 <div class="modalBack hidden" id="authBack">
   <div class="modal">
     <div class="modalHead">
@@ -121,18 +221,9 @@
     </div>
 
     <div class="modalBody">
-      <!-- LOGIN -->
       <div id="loginView">
-        <div class="field">
-          <label>E-mail</label>
-          <input id="loginEmail" placeholder="email@domain.ee">
-        </div>
-
-        <div class="field">
-          <label>Parool</label>
-          <input id="loginPass" type="password">
-        </div>
-
+        <div class="field"><label>E-mail</label><input id="loginEmail"></div>
+        <div class="field"><label>Parool</label><input id="loginPass" type="password"></div>
         <div class="field">
           <label>Roll</label>
           <select id="loginRole">
@@ -140,24 +231,12 @@
             <option value="organizer">Korraldaja</option>
           </select>
         </div>
-
-        <button class="btn btn-primary w100" id="doLogin">
-          Logi sisse
-        </button>
+        <button class="btn btn-primary w100" id="doLogin">Logi sisse</button>
       </div>
 
-      <!-- REGISTER -->
       <div id="registerView" class="hidden">
-        <div class="field">
-          <label>E-mail</label>
-          <input id="regEmail">
-        </div>
-
-        <div class="field">
-          <label>Parool</label>
-          <input id="regPass" type="password">
-        </div>
-
+        <div class="field"><label>E-mail</label><input id="regEmail"></div>
+        <div class="field"><label>Parool</label><input id="regPass" type="password"></div>
         <div class="field">
           <label>Konto tüüp</label>
           <select id="regRole">
@@ -165,10 +244,7 @@
             <option value="organizer">Korraldaja</option>
           </select>
         </div>
-
-        <button class="btn btn-primary w100" id="doRegister">
-          Loo konto
-        </button>
+        <button class="btn btn-primary w100" id="doRegister">Loo konto</button>
       </div>
     </div>
   </div>
@@ -176,8 +252,6 @@
 
 <div class="toast hidden" id="toast"></div>
 
-<!-- JS (OLULINE: relatiivne tee) -->
 <script src="./app.js"></script>
-
 </body>
 </html>
