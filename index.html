@@ -3,345 +3,150 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PulseTickets</title>
+  <title>Ticketrise</title>
+
   <link rel="stylesheet" href="/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-  <div class="topbar">
-    <div class="wrap inner">
-      <div class="brand"><div class="logo"></div>PulseTickets</div>
-      <div class="nav">
+  <!-- =========================
+    TOPBAR (Ticketrise)
+  ========================= -->
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#home" aria-label="Ticketrise avaleht">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="32" height="32">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#7c3aed"/>
+                <stop offset="0.5" stop-color="#22d3ee"/>
+                <stop offset="1" stop-color="#f97316"/>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#g)"/>
+            <path d="M22 22h20v8H22zM22 34h14v8H22z" fill="#06101a" opacity="0.92"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">Ticketrise</span>
+          <span class="brand-sub">piletid • üritused • check-in</span>
+        </span>
+      </a>
+
+      <nav class="nav">
         <a href="#home">Avaleht</a>
-        <a href="#checkin">Check-in</a>
-      </div>
+        <a href="#browse">Üritused</a>
+      </nav>
+
       <div class="actions">
-        <button class="btn ghost" id="btnOrg">Korraldajale</button>
-        <button class="btn danger" id="btnReset">Reset demo</button>
+        <button class="btn btn-ghost" id="btnAuth">Logi sisse</button>
+        <button class="btn btn-primary hidden" id="btnDashboard">Korraldaja</button>
+        <button class="btn btn-danger hidden" id="btnLogout">Logi välja</button>
       </div>
     </div>
-  </div>
+  </header>
 
-  <!-- HOME -->
-  <div class="page active" id="pageHome">
-    <div class="hero">
-      <div class="wrap">
-        <h1>Leia oma järgmine elamus</h1>
-        <div class="sub">Event → Checkout → QR e-maili → Check-in.</div>
+  <!-- =========================
+    HOME
+  ========================= -->
+  <main class="wrap" style="padding:26px 16px 60px">
+    <div class="hero-badge">⚡ Night-ready piletiplatvorm</div>
+    <h1 class="hero-title">Leia elamus, mis <span class="glow">päriselt</span> loeb.</h1>
+    <p class="hero-sub">Otsi üritusi, vali pilet, maksa ja saa QR-pilet e-mailile.</p>
 
-        <div class="search" role="search">
-          <div class="seg"><input id="q" placeholder="Üritus, korraldaja, koht" /></div>
-          <div class="seg" style="max-width:240px"><input id="city" value="tartu" placeholder="tartu" /></div>
-          <button class="go" id="doSearch">Otsi</button>
+    <div class="searchCard" style="margin-top:16px">
+      <div class="searchRow">
+        <div class="searchField">
+          <label>Otsi</label>
+          <input id="q" placeholder="Üritus, korraldaja, koht…" />
         </div>
 
-        <div class="filters">
-          <div class="pill active" data-filter="all">Kõik</div>
-          <div class="pill" data-filter="today">Täna</div>
-          <div class="pill" data-filter="tomorrow">Homme</div>
-          <div class="pill" data-filter="weekend">Nädalavahetus</div>
-          <div class="pill" data-filter="music">Muusika</div>
-          <div class="pill" data-filter="theatre">Teater</div>
-          <div class="pill" data-filter="festival">Festival</div>
-          <div class="pill" data-filter="family">Kogupere</div>
+        <div class="searchField">
+          <label>Asukoht</label>
+          <select id="city">
+            <option value="">Vali linn</option>
+            <option value="all">Kõik linnad</option>
+            <option value="tallinn">Tallinn</option>
+            <option value="tartu">Tartu</option>
+            <option value="parnu">Pärnu</option>
+            <option value="narva">Narva</option>
+          </select>
         </div>
-      </div>
-    </div>
 
-    <div class="wrap">
-      <div class="sectionhead">
-        <h2>Üritused</h2>
-        <div class="small" id="countText"></div>
-      </div>
-      <div class="grid" id="eventGrid"></div>
-    </div>
-  </div>
-
-  <!-- EVENT -->
-  <div class="page" id="pageEvent">
-    <div class="eventTop">
-      <div class="wrap">
-        <div class="eventTitle" id="evTitle"></div>
-        <div class="eventMini" id="evMini"></div>
-        <div style="display:flex;justify-content:center;margin-top:10px">
-          <button class="btn" id="evBack">← Tagasi</button>
-        </div>
+        <button class="btn btn-primary btn-search" id="doSearch">Otsi</button>
       </div>
     </div>
 
-    <div class="wrap">
-      <div class="heroImg"><img id="evImg" alt=""></div>
-
-      <div class="eventLayout">
-        <div class="panel">
-          <div class="ph"><b>Ürituse info</b><span class="small" id="evCat"></span></div>
-          <div class="pb">
-            <p class="desc" id="evDesc"></p>
-            <div class="kv"><span>Kuupäev</span><div id="evWhen"></div></div>
-            <div class="kv"><span>Asukoht</span><div id="evWhere"></div></div>
-            <div class="kv"><span>Korraldaja</span><div id="evOrg"></div></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="ph"><b>Piletid</b><span class="small" id="evFrom"></span></div>
-          <div class="pb" id="ticketList"></div>
-        </div>
-      </div>
+    <div class="sectionHead" style="margin-top:18px">
+      <h2>Üritused</h2>
+      <div class="muted" id="countText"></div>
     </div>
-  </div>
 
-  <!-- CHECKOUT -->
-  <div class="page" id="pageCheckout">
-    <div class="wrap checkoutWrap">
-      <div class="checkoutTitle">
-        <div class="backCircle" id="coBack">←</div>
-        <div>
-          <div style="font-weight:1100;font-size:28px;letter-spacing:-.02em">Tellimus</div>
-          <div class="small" id="coEventLine"></div>
+    <div class="grid" id="eventGrid"></div>
+  </main>
+
+  <!-- =========================
+    AUTH MODAL (login/register)
+  ========================= -->
+  <div class="modalBack hidden" id="authBack" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Autentimine">
+      <div class="modalHead">
+        <div class="modalTabs">
+          <button class="tab active" id="tabLogin">Logi sisse</button>
+          <button class="tab" id="tabRegister">Loo konto</button>
         </div>
+        <button class="btn btn-ghost" id="authClose">Sulge</button>
       </div>
 
-      <div class="checkoutGrid">
-        <div class="panel">
-          <div class="ph"><b>Tellija</b></div>
-          <div class="pb">
-            <div class="row">
-              <div class="field" style="flex:1;min-width:220px">
-                <label>Eesnimi</label>
-                <input id="firstName" placeholder="Eesnimi">
-              </div>
-              <div class="field" style="flex:1;min-width:220px">
-                <label>Perenimi</label>
-                <input id="lastName" placeholder="Perenimi">
-              </div>
-            </div>
-            <div class="field" style="margin-top:12px">
-              <label>E-mail</label>
-              <input id="email" placeholder="E-mail">
-            </div>
-
-            <div class="checkRow">
-              <input type="checkbox" id="c1">
-              <div class="checkText">
-                Nõustun teenuse <a href="#" style="color:#2f5bea">kasutustingimustega</a> ja <a href="#" style="color:#2f5bea">privaatsustingimustega</a>.
-              </div>
-            </div>
-            <div class="checkRow">
-              <input type="checkbox" id="c2">
-              <div class="checkText">
-                Tellimust teostades mõistan, et pileteid müüb korraldaja.
-              </div>
-            </div>
-
-            <button class="payBtn" id="payBtn">MAKSMA →</button>
-            <div class="small" id="mailHint" style="margin-top:10px"></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="ph"><b>Tellimus</b></div>
-          <div class="pb">
-            <div id="orderLines"></div>
-            <div class="hr"></div>
-            <div class="orderLine" style="font-size:22px">
-              <span></span><span id="orderTotal"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TICKET -->
-  <div class="page" id="pageTicket">
-    <div class="wrap ticketBox">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px">
-        <div>
-          <div style="font-weight:1100;font-size:22px">Digipilet</div>
-          <div class="small" id="ticketLine"></div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn" id="ticketBack">← Tagasi</button>
-          <button class="btn primary" onclick="window.print()">Prindi / Salvesta</button>
-        </div>
-      </div>
-
-      <div class="tokenBox">
-        <div>
-          <div style="font-weight:1100;margin-bottom:8px">QR</div>
-          <canvas id="qrCanvas" width="200" height="200"></canvas>
-        </div>
-        <div style="min-width:240px;flex:1">
-          <div class="status" id="ticketStatus"><span class="dot"></span> VALID</div>
-          <div class="hr"></div>
-          <div style="font-weight:1100">Token</div>
-          <div class="tok" id="ticketToken"></div>
-          <div class="small" style="margin-top:10px">Näita sissepääsus QR-i või tokenit.</div>
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn primary" id="openCheckin">Ava Check-in</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CHECKIN -->
-  <div class="page" id="pageCheckin">
-    <div class="wrap" style="padding:22px 0 50px">
-      <div class="panel">
-        <div class="ph"><b>Check-in</b><button class="btn" id="checkBack">← Tagasi</button></div>
-        <div class="pb">
-          <div class="row">
-            <div class="field" style="flex:1;min-width:260px">
-              <label>Vali üritus</label>
-              <input id="checkEvent" placeholder="(demo: kasuta tokenit, event valik automaatne)" disabled>
-            </div>
-            <div class="field" style="flex:1;min-width:320px">
-              <label>Token</label>
-              <input id="checkToken" placeholder="Kleebi token siia…">
-            </div>
-          </div>
-          <button class="payBtn" style="margin-top:14px" id="checkBtn">Kontrolli / Märgi USED</button>
-          <div class="hr"></div>
-          <div id="checkResult" style="font-weight:1100"></div>
-          <div class="small" style="margin-top:8px">Demo: märgib pileti USED sinu brauseris.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ORGANIZER MODAL -->
-  <div class="modalBack hidden" id="orgBack" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modalTop">
-        <b>Korraldaja</b>
-        <button class="btn" id="orgClose">Sulge</button>
-      </div>
       <div class="modalBody">
-        <div id="orgLoginView">
-          <div class="grid2">
+        <div id="loginView">
+          <div class="row2">
             <div class="field">
               <label>Email</label>
-              <input id="orgEmail" placeholder="organizer@demo.ee">
-              <div class="hint">Demo parool: <b>1234</b></div>
+              <input id="loginEmail" placeholder="email@domain.ee">
             </div>
             <div class="field">
               <label>Parool</label>
-              <input id="orgPass" type="password" placeholder="1234">
+              <input id="loginPass" type="password" placeholder="••••••">
             </div>
           </div>
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn primary" id="orgLogin">Logi sisse</button>
-            <button class="btn" id="orgCreate">Loo demo konto</button>
+
+          <div class="field">
+            <label>Kes sa oled?</label>
+            <select id="loginRole">
+              <option value="buyer">Ostja</option>
+              <option value="organizer">Korraldaja</option>
+            </select>
           </div>
+
+          <button class="btn btn-primary w100" id="doLogin">Logi sisse</button>
         </div>
 
-        <div id="orgDashView" class="hidden">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-            <div>
-              <div style="font-weight:1100">Sisse logitud: <span id="orgWho"></span></div>
-              <div class="hint">Selge dashboard: üritused + tellimused + loo uus.</div>
+        <div id="registerView" class="hidden">
+          <div class="row2">
+            <div class="field">
+              <label>Email</label>
+              <input id="regEmail" placeholder="email@domain.ee">
             </div>
-            <button class="btn" id="orgLogout">Logi välja</button>
-          </div>
-
-          <div class="hr"></div>
-
-          <div class="grid2">
-            <div class="panel" style="box-shadow:none">
-              <div class="ph"><b>Loo üritus</b><span class="small">nähtav avalehel</span></div>
-              <div class="pb">
-                <div class="field">
-                  <label>Ürituse nimi</label>
-                  <input id="aTitle" placeholder="Nt: TARTU MASSIVE: YUSSI AJ">
-                </div>
-
-                <div class="grid2" style="margin-top:10px">
-                  <div class="field">
-                    <label>Kuupäev ja kellaaeg</label>
-                    <input id="aTime" type="datetime-local">
-                  </div>
-                  <div class="field">
-                    <label>Linn</label>
-                    <input id="aCity" value="tartu" placeholder="tartu">
-                  </div>
-                </div>
-
-                <div class="grid2" style="margin-top:10px">
-                  <div class="field">
-                    <label>Asukoht</label>
-                    <input id="aLoc" placeholder="KLUBI GUTENBERG - APARAADITEHAS">
-                  </div>
-                  <div class="field">
-                    <label>Kategooria</label>
-                    <input id="aCat" value="Muusika" placeholder="Muusika / Festival / Teater">
-                  </div>
-                </div>
-
-                <div class="field" style="margin-top:10px">
-                  <label>Hero pildi URL</label>
-                  <input id="aImg" placeholder="https://...">
-                  <div class="hint">Soovitus: Unsplash või sinu pilt URL-iga.</div>
-                </div>
-
-                <div class="field" style="margin-top:10px">
-                  <label>Kirjeldus</label>
-                  <input id="aDesc" placeholder="Kirjelda üritust...">
-                </div>
-
-                <div class="hr"></div>
-                <div style="font-weight:1100;margin-bottom:8px">Piletid</div>
-
-                <div class="grid2">
-                  <div class="field">
-                    <label>Pilet 1 nimi</label>
-                    <input id="t1Name" value="REGULAR BIRD">
-                  </div>
-                  <div class="field">
-                    <label>Pilet 1 hind (€)</label>
-                    <input id="t1Price" type="number" value="15">
-                  </div>
-                </div>
-                <div class="grid2" style="margin-top:10px">
-                  <div class="field">
-                    <label>Pilet 1 kogus</label>
-                    <input id="t1Qty" type="number" value="100">
-                  </div>
-                  <div class="field">
-                    <label>Pilet 2 nimi</label>
-                    <input id="t2Name" value="VIP">
-                  </div>
-                </div>
-                <div class="grid2" style="margin-top:10px">
-                  <div class="field">
-                    <label>Pilet 2 hind (€)</label>
-                    <input id="t2Price" type="number" value="30">
-                  </div>
-                  <div class="field">
-                    <label>Pilet 2 kogus</label>
-                    <input id="t2Qty" type="number" value="50">
-                  </div>
-                </div>
-
-                <button class="payBtn" style="margin-top:14px" id="saveEvent">Salvesta üritus</button>
-              </div>
-            </div>
-
-            <div class="panel" style="box-shadow:none">
-              <div class="ph"><b>Minu üritused</b><span class="small">kustuta / ava</span></div>
-              <div class="pb">
-                <div id="myEvents"></div>
-                <div class="hr"></div>
-                <div class="ph" style="padding:0;border:0"><b style="font-size:14px">Tellimused</b></div>
-                <div id="myOrders"></div>
-                <div style="margin-top:10px">
-                  <button class="btn danger" id="wipeOrders">Kustuta tellimused (demo)</button>
-                </div>
-              </div>
+            <div class="field">
+              <label>Parool</label>
+              <input id="regPass" type="password" placeholder="vali parool">
             </div>
           </div>
 
+          <div class="field">
+            <label>Konto tüüp</label>
+            <select id="regRole">
+              <option value="buyer">Ostja</option>
+              <option value="organizer">Korraldaja</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary w100" id="doRegister">Loo konto</button>
         </div>
       </div>
     </div>
