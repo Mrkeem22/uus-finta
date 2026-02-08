@@ -83,6 +83,17 @@ p{margin:0 0 12px 0;color:var(--muted);line-height:1.55}
 }
 .btn.full{width:100%}
 
+.linkBtn{
+  border:none;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+  padding:0;
+  font-weight:800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .app{max-width:1100px;margin:0 auto;padding:22px 18px 60px}
 
 .hero{
@@ -140,6 +151,7 @@ p{margin:0 0 12px 0;color:var(--muted);line-height:1.55}
   background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
   box-shadow:0 14px 40px rgba(0,0,0,.35);
   transition: transform .18s ease, filter .18s ease;
+  cursor:pointer;
 }
 .card:hover{transform:translateY(-2px);filter:brightness(1.03)}
 .poster{
@@ -191,7 +203,7 @@ p{margin:0 0 12px 0;color:var(--muted);line-height:1.55}
 }
 .modal.isOpen{display:grid}
 .modalCard{
-  width:min(460px, calc(100% - 28px));
+  width:min(520px, calc(100% - 28px));
   border-radius:22px;
   border:1px solid var(--line);
   background:linear-gradient(180deg, rgba(13,20,40,.98), rgba(13,20,40,.92));
@@ -206,20 +218,6 @@ p{margin:0 0 12px 0;color:var(--muted);line-height:1.55}
   border-radius:12px;
   padding:8px 10px;
   cursor:pointer;
-}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.tab{
-  border:1px solid var(--line);
-  background:rgba(255,255,255,.04);
-  color:var(--muted);
-  border-radius:14px;
-  padding:10px 12px;
-  cursor:pointer;
-  font-weight:800;
-}
-.tab.isActive{
-  color:var(--text);
-  background:rgba(255,255,255,.08);
 }
 .form{margin-top:12px;display:grid;gap:10px}
 .field{display:grid;gap:6px}
