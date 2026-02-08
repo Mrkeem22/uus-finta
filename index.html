@@ -2,391 +2,88 @@
 <html lang="et">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ticketrise</title>
-
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ticketrise — piletid • üritused</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-
-<header class="topbar">
-  <div class="wrap topbar-inner">
-    <div class="brand" role="link" tabindex="0" onclick="location.hash='#home'">
-      <div class="logo" aria-hidden="true">
-        <svg viewBox="0 0 64 64" width="28" height="28">
-          <defs>
-            <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#7c3aed"/>
-              <stop offset="1" stop-color="#22d3ee"/>
-            </linearGradient>
-          </defs>
-          <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#tg)"/>
-          <path d="M22 22h20v8H22zM22 34h14v8H22z" fill="#020617"/>
-        </svg>
-      </div>
-      <div>
-        <div class="brand-name">Ticketrise</div>
-        <div class="brand-sub">piletid • üritused</div>
-      </div>
-    </div>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Ticketrise avaleht">
+      <span class="logo" aria-hidden="true">T</span>
+      <span class="brandText">
+        <strong>Ticketrise</strong>
+        <small>piletid • üritused</small>
+      </span>
+    </a>
 
     <nav class="nav">
-      <a href="#home">Avaleht</a>
-      <a href="#events">Üritused</a>
+      <a href="#home" class="navLink" data-nav="home">Avaleht</a>
+      <a href="#events" class="navLink" data-nav="events">Üritused</a>
+      <a href="#organizer" class="navLink navOrganizer" data-nav="organizer" hidden>Korraldaja</a>
     </nav>
 
     <div class="actions">
-      <button class="btn btn-ghost" id="btnAuth">Logi sisse</button>
-      <button class="btn btn-primary hidden" id="btnDashboard">Korraldaja</button>
-      <button class="btn btn-danger hidden" id="btnLogout">Logi välja</button>
+      <button class="btn ghost" id="btnLogin">Logi sisse</button>
+      <button class="btn" id="btnSignup">Loo konto</button>
+      <button class="btn ghost" id="btnLogout" hidden>Logi välja</button>
     </div>
-  </div>
-</header>
+  </header>
 
-<!-- ========================= HOME ========================= -->
-<main class="wrap page active" id="pageHome">
-  <div class="hero">
-    <div class="hero-badge">⚡ Night-ready piletiplatvorm</div>
-    <h1 class="hero-title">Leia elamus, mis <span class="glow">päriselt</span> loeb</h1>
-    <p class="hero-sub">Otsi üritusi, vali pilet ja ostmine on super lihtne.</p>
-  </div>
+  <main id="app" class="app" aria-live="polite"></main>
 
-  <div class="searchCard">
-    <div class="searchRow">
-      <div class="searchField">
-        <label>Otsi</label>
-        <input id="q" placeholder="Üritus, korraldaja, koht…" />
+  <!-- AUTH MODAL -->
+  <div class="modal" id="modalAuth" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="modalTop">
+        <h3 id="authTitle">Logi sisse</h3>
+        <button class="iconBtn" id="authClose" aria-label="Sulge">✕</button>
       </div>
 
-      <div class="searchField">
-        <label>Asukoht</label>
-        <select id="city">
-          <option value="">Vali linn</option>
-          <option value="tallinn">Tallinn</option>
-          <option value="tartu">Tartu</option>
-          <option value="parnu">Pärnu</option>
-          <option value="narva">Narva</option>
-          <option value="all">Kõik linnad</option>
-        </select>
+      <div class="tabs">
+        <button class="tab isActive" id="tabLogin">Logi sisse</button>
+        <button class="tab" id="tabSignup">Loo konto</button>
       </div>
 
-      <button class="btn btn-primary btn-search" id="doSearch">Otsi</button>
-    </div>
-  </div>
-
-  <div class="sectionHead">
-    <h2>Üritused</h2>
-    <div class="muted" id="countText"></div>
-  </div>
-
-  <div class="grid" id="eventGrid"></div>
-</main>
-
-<!-- ========================= EVENT (light + hero image) ========================= -->
-<main class="page" id="pageEvent">
-  <section class="eventHero">
-    <img id="evHeroImg" alt="">
-    <div class="eventHeroShade"></div>
-    <div class="wrap eventHeroInner">
-      <button class="evBackLight" id="evBack" aria-label="Tagasi">← Tagasi</button>
-      <div class="eventHeroMeta" id="evTopMeta"></div>
-      <h1 class="eventHeroTitle" id="evTitle"></h1>
-
-      <div class="eventHeroBadges" id="evBadges"></div>
-
-      <div class="eventHeroActions">
-        <button class="btn evMoreBtn" id="evMoreBtn">Loe rohkem</button>
-        <a class="evLink" id="evLink" href="#" target="_blank" rel="noopener">Facebook event</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="wrap evTicketsSection">
-    <div class="ticketCards" id="ticketsGrid"></div>
-  </section>
-
-  <section class="wrap evMore hidden" id="evMore">
-    <div class="evMoreGrid">
-      <div class="evMoreCard">
-        <div class="evMoreHead">Ürituse info</div>
-        <div class="evInfoRow"><span>Kuupäev</span><b id="evWhen"></b></div>
-        <div class="evInfoRow"><span>Asukoht</span><b id="evWhere"></b></div>
-        <div class="evInfoRow"><span>Korraldaja</span><b id="evOrg2"></b></div>
-        <div class="evInfoRow"><span>Vanusepiirang</span><b id="evAge"></b></div>
-      </div>
-
-      <div class="evMoreCard">
-        <div class="evMoreHead">Kirjeldus</div>
-        <div class="evDesc" id="evDesc"></div>
-
-        <div class="evMoreHead" style="margin-top:14px">Hea teada</div>
-        <ul class="evNotes" id="evNotes"></ul>
-      </div>
-    </div>
-  </section>
-</main>
-
-<!-- ========================= CHECKOUT (dark) ========================= -->
-<main class="wrap page" id="pageCheckout">
-  <div class="checkoutTop">
-    <button class="btn btn-ghost" id="coBack">←</button>
-    <div>
-      <div class="checkoutTitle">Tellimus</div>
-      <div class="muted" id="coLine"></div>
-    </div>
-  </div>
-
-  <div class="checkoutGrid">
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Tellija</div></div>
-      <div class="panelBody">
-        <div class="row2">
-          <div class="field"><label>Eesnimi</label><input id="firstName" placeholder="Eesnimi"></div>
-          <div class="field"><label>Perenimi</label><input id="lastName" placeholder="Perenimi"></div>
-        </div>
-
-        <div class="field"><label>E-mail</label><input id="email" placeholder="E-mail"></div>
-
-        <label class="check"><input type="checkbox" id="c1"><span>Nõustun tingimustega.</span></label>
-        <label class="check"><input type="checkbox" id="c2"><span>Mõistan, et pileteid müüb korraldaja.</span></label>
-
-        <button class="btn btn-primary btn-pay" id="payBtn">MAKSMA</button>
-        <div class="muted" id="mailHint"></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Tellimus</div></div>
-      <div class="panelBody">
-        <div id="orderLines"></div>
-        <div class="divider"></div>
-        <div class="totalRow"><span>Kokku</span><span id="orderTotal"></span></div>
-      </div>
-    </div>
-  </div>
-</main>
-
-<!-- ========================= ORGANIZER ========================= -->
-<main class="wrap page" id="pageOrg">
-  <div class="orgTop">
-    <div>
-      <div class="orgTitle">Korraldaja</div>
-      <div class="muted" id="orgSub">Täida firma profiil, loo üritusi ja jälgi müüki.</div>
-    </div>
-    <div class="orgActions">
-      <button class="btn btn-ghost" id="tabProfile">Firma profiil</button>
-      <button class="btn btn-ghost" id="tabEvents">Minu üritused</button>
-      <button class="btn btn-ghost" id="tabAnalytics">Analüütika</button>
-      <button class="btn btn-primary" id="newEventBtn">+ Uus üritus</button>
-    </div>
-  </div>
-
-  <!-- PROFILE -->
-  <section class="panel orgTab" id="orgProfile">
-    <div class="panelHead">
-      <div>
-        <div class="panelTitle">Firma ankeet</div>
-        <div class="muted">Vajalik, et saaksid Ticketrise’is üritusi müüa (kontakt + väljamakse info).</div>
-      </div>
-      <div class="pill" id="profileStatus">—</div>
-    </div>
-    <div class="panelBody">
-      <div class="orgForm">
-        <div class="row2">
-          <div class="field"><label>Firma nimi *</label><input id="p_company" placeholder="OÜ Näide"></div>
-          <div class="field"><label>Registrikood *</label><input id="p_reg" placeholder="12345678"></div>
-        </div>
-
-        <div class="row2">
-          <div class="field"><label>KMKR (valikuline)</label><input id="p_vat" placeholder="EE123456789"></div>
-          <div class="field"><label>Riik *</label><input id="p_country" placeholder="Eesti"></div>
-        </div>
-
-        <div class="field"><label>Aadress *</label><input id="p_address" placeholder="Tartu mnt 1, Tallinn"></div>
-
-        <div class="row2">
-          <div class="field"><label>Kontaktisik *</label><input id="p_contact" placeholder="Nimi"></div>
-          <div class="field"><label>Telefon *</label><input id="p_phone" placeholder="+372..."></div>
-        </div>
-
-        <div class="field"><label>Kontakt e-mail *</label><input id="p_email" placeholder="kontakt@firma.ee"></div>
-
-        <div class="row2">
-          <div class="field"><label>Väljamakse IBAN *</label><input id="p_iban" placeholder="EE..."></div>
-          <div class="field"><label>Panga nimi (valikuline)</label><input id="p_bank" placeholder="Swedbank"></div>
-        </div>
-
-        <div class="divider"></div>
-        <label class="check">
-          <input type="checkbox" id="p_terms">
-          <span>Kinnitan, et esitatud info on õige ning nõustun müügitingimustega. *</span>
+      <form id="formLogin" class="form">
+        <label class="field">
+          <span>E-mail</span>
+          <input type="email" name="email" autocomplete="email" required />
         </label>
+        <label class="field">
+          <span>Parool</span>
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn full" type="submit">Logi sisse</button>
 
-        <div class="orgSaveRow">
-          <button class="btn btn-primary" id="saveProfileBtn">Salvesta profiil</button>
-        </div>
-      </div>
-    </div>
-  </section>
+        <p class="hint">
+          Demo korraldaja: <b>demo@ticketrise.ee</b> / <b>Ticketrise123!</b><br/>
+          Demo ostja: <b>buyer@ticketrise.ee</b> / <b>Ticketrise123!</b>
+        </p>
+      </form>
 
-  <!-- EVENTS -->
-  <div class="orgGrid orgTab hidden" id="orgEvents">
-    <section class="panel">
-      <div class="panelHead">
-        <div class="panelTitle">Minu üritused</div>
-      </div>
-      <div class="panelBody">
-        <div class="orgList" id="orgList"></div>
-      </div>
-    </section>
+      <form id="formSignup" class="form" hidden>
+        <label class="field">
+          <span>E-mail</span>
+          <input type="email" name="email" autocomplete="email" required />
+        </label>
+        <label class="field">
+          <span>Parool</span>
+          <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+        </label>
+        <label class="field">
+          <span>Korda parool</span>
+          <input type="password" name="password2" autocomplete="new-password" minlength="8" required />
+        </label>
+        <button class="btn full" type="submit">Loo konto</button>
+        <p class="hint">
+          Pärast konto loomist saad oma kontost valida, kas kasutad ostjana või aktiveerid korraldaja režiimi.
+        </p>
+      </form>
 
-    <section class="panel">
-      <div class="panelHead">
-        <div>
-          <div class="panelTitle">Ürituse loomine / muutmine</div>
-          <div class="muted" id="editMeta">Vali vasakult üritus või loo uus.</div>
-        </div>
-      </div>
-      <div class="panelBody">
-        <div class="orgForm">
-          <div class="row2">
-            <div class="field"><label>Pealkiri *</label><input id="f_title" placeholder="Ürituse nimi"></div>
-            <div class="field"><label>Kategooria *</label><input id="f_category" placeholder="Muusika / Festival / jne"></div>
-          </div>
-
-          <div class="row2">
-            <div class="field">
-              <label>Linn *</label>
-              <select id="f_city">
-                <option value="tallinn">Tallinn</option>
-                <option value="tartu">Tartu</option>
-                <option value="parnu">Pärnu</option>
-                <option value="narva">Narva</option>
-              </select>
-            </div>
-            <div class="field"><label>Algus (kuupäev+kell) *</label><input id="f_start" type="datetime-local"></div>
-          </div>
-
-          <div class="row2">
-            <div class="field"><label>Lõpp (valikuline)</label><input id="f_end" type="datetime-local"></div>
-            <div class="field"><label>Uksed avatakse (valikuline)</label><input id="f_doors" type="time"></div>
-          </div>
-
-          <div class="row2">
-            <div class="field"><label>Vanusepiirang *</label><input id="f_age" placeholder="nt 18+"></div>
-            <div class="field"><label>Korraldaja nimi *</label><input id="f_organizer" placeholder="Firma / brand"></div>
-          </div>
-
-          <div class="field"><label>Asukoht (koht + aadress) *</label><input id="f_location" placeholder="Klubi X, Aadress..."></div>
-          <div class="field"><label>Poster / pildi URL *</label><input id="f_image" placeholder="https://..."></div>
-
-          <div class="field"><label>Kirjeldus *</label>
-            <textarea id="f_desc" rows="6" placeholder="Kirjuta selgelt: mis toimub, lineup, ajakava, reeglid..."></textarea>
-          </div>
-
-          <div class="field"><label>Hea teada (iga rida eraldi)</label>
-            <textarea id="f_notes" rows="4" placeholder="ID kaasa&#10;Parkimine&#10;Sisenemine kuni..."></textarea>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="ticketsHead">
-            <div class="panelTitle" style="margin:0">Piletitüübid *</div>
-            <button class="btn btn-ghost" id="addTicketBtn">+ Lisa pilet</button>
-          </div>
-          <div class="ticketEditor" id="ticketEditor"></div>
-
-          <div class="orgSaveRow">
-            <button class="btn btn-danger hidden" id="deleteEventBtn">Kustuta</button>
-            <button class="btn btn-primary" id="saveEventBtn">Salvesta üritus</button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ANALYTICS -->
-  <section class="panel orgTab hidden" id="orgAnalytics">
-    <div class="panelHead">
-      <div>
-        <div class="panelTitle">Analüütika</div>
-        <div class="muted">Müük, piletid, tulu ja tellimused (demo – localStorage).</div>
-      </div>
-    </div>
-    <div class="panelBody">
-      <div class="kpiGrid">
-        <div class="kpi"><div class="muted">Tulu kokku</div><div class="kpiVal" id="kpiRevenue">—</div></div>
-        <div class="kpi"><div class="muted">Piletid müüdud</div><div class="kpiVal" id="kpiTickets">—</div></div>
-        <div class="kpi"><div class="muted">Tellimusi</div><div class="kpiVal" id="kpiOrders">—</div></div>
-        <div class="kpi"><div class="muted">Aktiivseid üritusi</div><div class="kpiVal" id="kpiEvents">—</div></div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="tableWrap">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th>Üritus</th>
-              <th>Kuupäev</th>
-              <th>Müüdud</th>
-              <th>Tulu</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="analyticsRows"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-</main>
-
-<!-- ========================= AUTH MODAL ========================= -->
-<div class="modalBack hidden" id="authBack">
-  <div class="modal">
-    <div class="modalHead">
-      <div class="modalTabs">
-        <button class="tab active" id="tabLogin">Logi sisse</button>
-        <button class="tab" id="tabRegister">Loo konto</button>
-      </div>
-      <button class="btn btn-ghost" id="authClose">Sulge</button>
-    </div>
-
-    <div class="modalBody">
-      <div id="loginView">
-        <div class="field"><label>E-mail</label><input id="loginEmail"></div>
-        <div class="field"><label>Parool</label><input id="loginPass" type="password"></div>
-        <div class="field">
-          <label>Roll</label>
-          <select id="loginRole">
-            <option value="buyer">Ostja</option>
-            <option value="organizer">Korraldaja</option>
-          </select>
-        </div>
-        <button class="btn btn-primary w100" id="doLogin">Logi sisse</button>
-      </div>
-
-      <div id="registerView" class="hidden">
-        <div class="field"><label>E-mail</label><input id="regEmail"></div>
-        <div class="field"><label>Parool</label><input id="regPass" type="password"></div>
-        <div class="field">
-          <label>Konto tüüp</label>
-          <select id="regRole">
-            <option value="buyer">Ostja</option>
-            <option value="organizer">Korraldaja</option>
-          </select>
-        </div>
-        <button class="btn btn-primary w100" id="doRegister">Loo konto</button>
-      </div>
+      <div class="toast" id="authToast" hidden></div>
     </div>
   </div>
-</div>
 
-<div class="toast hidden" id="toast"></div>
-<script src="./app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
