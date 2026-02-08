@@ -1,13 +1,9 @@
 (() => {
-  // =========
-  // STORAGE (robust)
-  // =========
   const KEYS = {
-    USERS: "ticketrise_users_v1",
-    SESSION: "ticketrise_session_v1",
-    EVENTS: "ticketrise_events_v1",
-    ORDERS: "ticketrise_orders_v1",
-    ORG_PROFILE: "ticketrise_org_profile_v1"
+    USERS: "ticketrise_users_v2",
+    SESSION: "ticketrise_session_v2",
+    EVENTS: "ticketrise_events_v2",
+    ORDERS: "ticketrise_orders_v2"
   };
 
   const safeJSON = {
@@ -16,8 +12,7 @@
         const raw = localStorage.getItem(key);
         if (!raw) return fallback;
         return JSON.parse(raw);
-      } catch (e) {
-        console.warn("Storage read failed:", key, e);
+      } catch {
         return fallback;
       }
     },
@@ -26,11 +21,7 @@
     }
   };
 
-  // =========
-  // SEED DATA (auto-restore)
-  // =========
   function seedIfNeeded() {
-    // Users seed
     const users = safeJSON.get(KEYS.USERS, null);
     if (!Array.isArray(users) || users.length === 0) {
       safeJSON.set(KEYS.USERS, [
@@ -39,11 +30,9 @@
       ]);
     }
 
-    // Events seed
     const events = safeJSON.get(KEYS.EVENTS, null);
     if (!Array.isArray(events) || events.length === 0) {
-      const now = new Date();
-      const y = now.getFullYear();
+      const y = new Date().getFullYear();
       safeJSON.set(KEYS.EVENTS, [
         {
           id: "ev_1",
@@ -61,7 +50,6 @@ Mis toimub:
 • klubis on muusikat tugevalt (drum & bass, house)
 • uksed 23:00
 • vanusepiirang 18+`,
-          goodToKnow: ["Tasuline garderoob.", "Sündmusel kehtib vanusepiirang 18+."],
           tickets: [
             { id: "t1", name: "Regular Bird", price: 15, stock: 120 },
             { id: "t2", name: "Priority", price: 25, stock: 80 }
@@ -76,9 +64,7 @@ Mis toimub:
           startISO: `${y}-03-13T22:00:00`,
           age: "18+",
           posterUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=60",
-          description:
-`Öö, mis ei lõpeta vara. Hea heli, kiire energia ja üllatused.`,
-          goodToKnow: ["Tule varem – järjekorrad väiksemad.", "Tühjad klaasid ja plasttaara on keelatud."],
+          description: "Öö, mis ei lõpeta vara. Hea heli, kiire energia ja üllatused.",
           tickets: [
             { id: "t1", name: "Early", price: 13, stock: 65 },
             { id: "t2", name: "Regular", price: 17, stock: 100 }
@@ -87,38 +73,35 @@ Mis toimub:
       ]);
     }
 
-    // Orders seed
     const orders = safeJSON.get(KEYS.ORDERS, null);
     if (!Array.isArray(orders)) safeJSON.set(KEYS.ORDERS, []);
-
-    // Organizer profile seed (for demo org)
-    const prof = safeJSON.get(KEYS.ORG_PROFILE, null);
-    if (!prof || typeof prof !== "object") {
-      safeJSON.set(KEYS.ORG_PROFILE, {}); // keyed by userId
-    }
   }
 
   seedIfNeeded();
 
-  // =========
-  // STATE
-  // =========
   const $app = document.getElementById("app");
-  const $btnLogin = document.getElementById("btnLogin");
-  const $btnSignup = document.getElementById("btnSignup");
+  const $btnAuth = document.getElementById("btnAuth");
   const $btnLogout = document.getElementById("btnLogout");
   const $navOrganizer = document.querySelector(".navOrganizer");
 
+  // AUTH MODAL
   const authModal = document.getElementById("modalAuth");
   const authClose = document.getElementById("authClose");
-  const tabLogin = document.getElementById("tabLogin");
-  const tabSignup = document.getElementById("tabSignup");
   const formLogin = document.getElementById("formLogin");
   const formSignup = document.getElementById("formSignup");
   const authToast = document.getElementById("authToast");
+  const toSignup = document.getElementById("toSignup");
+  const toLogin = document.getElementById("toLogin");
+  const authTitle = document.getElementById("authTitle");
+
+  // EVENT MODAL
+  const eventModal = document.getElementById("modalEvent");
+  const eventClose = document.getElementById("eventClose");
+  const eventTitle = document.getElementById("eventTitle");
+  const eventBody = document.getElementById("eventBody");
 
   const state = {
-    location: null, // not selected by default
+    location: null,
     query: "",
     session: safeJSON.get(KEYS.SESSION, null),
   };
@@ -126,9 +109,10 @@ Mis toimub:
   function getUsers(){ return safeJSON.get(KEYS.USERS, []); }
   function setUsers(v){ safeJSON.set(KEYS.USERS, v); }
   function getEvents(){ return safeJSON.get(KEYS.EVENTS, []); }
-  function setEvents(v){ safeJSON.set(KEYS.EVENTS, v); }
   function getOrders(){ return safeJSON.get(KEYS.ORDERS, []); }
-  function setOrders(v){ safeJSON.set(KEYS.ORDERS, v); }
+
+  function escapeHtml(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
 
   function toast(msg, type="ok"){
     authToast.hidden = false;
@@ -137,9 +121,17 @@ Mis toimub:
   }
   function clearToast(){ authToast.hidden = true; authToast.textContent = ""; authToast.className="toast"; }
 
-  // =========
-  // AUTH
-  // =========
+  function setSession(sess){
+    state.session = sess;
+    safeJSON.set(KEYS.SESSION, sess);
+    syncAuthUI();
+  }
+  function clearSession(){
+    state.session = null;
+    localStorage.removeItem(KEYS.SESSION);
+    syncAuthUI();
+  }
+
   function openAuth(mode="login"){
     authModal.classList.add("isOpen");
     authModal.setAttribute("aria-hidden","false");
@@ -152,63 +144,79 @@ Mis toimub:
   }
   function setAuthMode(mode){
     if(mode==="login"){
-      tabLogin.classList.add("isActive");
-      tabSignup.classList.remove("isActive");
+      authTitle.textContent = "Logi sisse";
       formLogin.hidden = false;
       formSignup.hidden = true;
-      document.getElementById("authTitle").textContent = "Logi sisse";
     } else {
-      tabSignup.classList.add("isActive");
-      tabLogin.classList.remove("isActive");
+      authTitle.textContent = "Loo konto";
       formLogin.hidden = true;
       formSignup.hidden = false;
-      document.getElementById("authTitle").textContent = "Loo konto";
     }
   }
 
-  function setSession(sess){
-    state.session = sess;
-    safeJSON.set(KEYS.SESSION, sess);
-    syncAuthUI();
+  function openEvent(ev){
+    eventTitle.textContent = ev.title;
+    const minP = minPrice(ev);
+    eventBody.innerHTML = `
+      <div style="display:grid;gap:10px">
+        <div class="pill">${escapeHtml(ev.city)} • ${escapeHtml(fmtDate(ev.startISO))} • ${escapeHtml(ev.age)}</div>
+        <div class="poster" style="border-radius:16px;border:1px solid rgba(255,255,255,.08);background-image:url('${escapeAttr(ev.posterUrl)}')"></div>
+        <p><b>${escapeHtml(ev.venue)}</b><br/><span style="color:var(--muted)">${escapeHtml(ev.organizerName)}</span></p>
+        <p style="white-space:pre-wrap">${escapeHtml(ev.description || "")}</p>
+        <div class="row">
+          <span class="pill">alates ${minP} €</span>
+          <button class="btnTiny" disabled>Osta (järgmine samm)</button>
+        </div>
+      </div>
+    `;
+    eventModal.classList.add("isOpen");
+    eventModal.setAttribute("aria-hidden","false");
   }
-  function clearSession(){
-    state.session = null;
-    localStorage.removeItem(KEYS.SESSION);
-    syncAuthUI();
+  function closeEvent(){
+    eventModal.classList.remove("isOpen");
+    eventModal.setAttribute("aria-hidden","true");
+    eventBody.innerHTML = "";
   }
+
   function syncAuthUI(){
     const loggedIn = !!state.session;
-    $btnLogin.hidden = loggedIn;
-    $btnSignup.hidden = loggedIn;
+    $btnAuth.hidden = loggedIn;
     $btnLogout.hidden = !loggedIn;
-
     const canOrg = loggedIn && !!state.session.canOrganize;
     $navOrganizer.hidden = !canOrg;
 
-    // top nav active
     document.querySelectorAll(".navLink").forEach(a => a.classList.remove("isActive"));
     const route = (location.hash || "#home").replace("#","");
     const active = document.querySelector(`[data-nav="${route}"]`);
     if(active) active.classList.add("isActive");
   }
 
-  // =========
-  // ROUTER
-  // =========
-  function go(hash){ location.hash = hash; }
-  function currentHash(){ return location.hash || "#home"; }
-
-  window.addEventListener("hashchange", render);
-
-  // =========
-  // UI BUILDERS
-  // =========
   const fmtDate = (iso) => {
     try{
       const d = new Date(iso);
       return d.toLocaleString("et-EE", { weekday:"short", day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
     }catch{ return iso; }
   };
+
+  function minPrice(ev){
+    const prices = (ev.tickets || []).map(t => Number(t.price)).filter(n => Number.isFinite(n));
+    if(prices.length===0) return "—";
+    return Math.min(...prices).toFixed(0);
+  }
+
+  function filterEvents(events){
+    return events.filter(ev => {
+      const q = (state.query || "").trim().toLowerCase();
+      const loc = state.location;
+
+      const matchLoc = !loc ? true : (loc==="ALL" ? true : ev.city === loc);
+      if(!matchLoc) return false;
+
+      if(!q) return true;
+      const hay = `${ev.title} ${ev.organizerName} ${ev.venue} ${ev.city}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
 
   function heroHTML(){
     return `
@@ -244,7 +252,7 @@ Mis toimub:
     return `
       <div class="grid">
         ${events.map(ev => `
-          <article class="card" role="article">
+          <article class="card" role="article" data-card-open="${ev.id}" tabindex="0" aria-label="Ava üritus: ${escapeAttr(ev.title)}">
             <div class="poster" style="background-image:url('${escapeAttr(ev.posterUrl)}')"></div>
             <div class="cardBody">
               <div class="meta">
@@ -255,7 +263,7 @@ Mis toimub:
               <h3>${escapeHtml(ev.title)}</h3>
               <p>${escapeHtml(ev.venue)} • ${escapeHtml(ev.organizerName)}</p>
               <div class="row">
-                <button class="btnTiny" data-open="${ev.id}">Loe rohkem</button>
+                <span class="pill">Loe rohkem</span>
                 <span class="pill">alates ${minPrice(ev)} €</span>
               </div>
             </div>
@@ -263,26 +271,6 @@ Mis toimub:
         `).join("")}
       </div>
     `;
-  }
-
-  function filterEvents(events){
-    return events.filter(ev => {
-      const q = (state.query || "").trim().toLowerCase();
-      const loc = state.location;
-
-      const matchLoc = !loc ? true : (loc==="ALL" ? true : ev.city === loc);
-      if(!matchLoc) return false;
-
-      if(!q) return true;
-      const hay = `${ev.title} ${ev.organizerName} ${ev.venue} ${ev.city}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }
-
-  function minPrice(ev){
-    const prices = (ev.tickets || []).map(t => Number(t.price)).filter(n => Number.isFinite(n));
-    if(prices.length===0) return "—";
-    return Math.min(...prices).toFixed(0);
   }
 
   function homePage(){
@@ -325,8 +313,6 @@ Mis toimub:
       `;
     }
 
-    // organizer dashboard placeholder (järgmise sammuna teeme “täismängu”)
-    const events = getEvents().filter(e => e.organizerName && state.session);
     const orders = getOrders();
     const totalRevenue = orders.reduce((s,o)=>s + (Number(o.total)||0),0);
     const ticketsSold = orders.reduce((s,o)=>s + (Number(o.qty)||0),0);
@@ -337,62 +323,22 @@ Mis toimub:
           <div>
             <div class="badge">Korraldaja</div>
             <h2>Dashboard (demo)</h2>
-            <p>Siit edasi ehitame sinu “täismängu” (firma ankeet, minu üritused, analüütika, check-in).</p>
+            <p>Järgmine samm: firma ankeet, ürituse loomine, analüütika, check-in.</p>
           </div>
           <div class="pill">Konto: <b>${escapeHtml(state.session.email)}</b></div>
         </div>
 
         <div style="margin-top:14px" class="grid">
-          <div class="card"><div class="cardBody"><div class="meta"><span class="pill">Tulu</span></div><h3>${totalRevenue.toFixed(2)} €</h3><p>Kokku (demo tellimused)</p></div></div>
-          <div class="card"><div class="cardBody"><div class="meta"><span class="pill">Piletid</span></div><h3>${ticketsSold}</h3><p>Müüdud (demo)</p></div></div>
-          <div class="card"><div class="cardBody"><div class="meta"><span class="pill">Üritusi</span></div><h3>${events.length}</h3><p>Hetkel süsteemis</p></div></div>
+          <div class="card" style="cursor:default"><div class="cardBody"><div class="meta"><span class="pill">Tulu</span></div><h3>${totalRevenue.toFixed(2)} €</h3><p>Kokku (demo)</p></div></div>
+          <div class="card" style="cursor:default"><div class="cardBody"><div class="meta"><span class="pill">Piletid</span></div><h3>${ticketsSold}</h3><p>Müüdud (demo)</p></div></div>
+          <div class="card" style="cursor:default"><div class="cardBody"><div class="meta"><span class="pill">Staatus</span></div><h3>Valmis</h3><p>Login + klikitav event kaart</p></div></div>
         </div>
       </section>
-
-      <div class="sectionTitle"><h2>Kiirtoimingud</h2></div>
-      <div class="grid">
-        <div class="card"><div class="cardBody">
-          <h3>Lisa uus üritus (järgmine samm)</h3>
-          <p>Teeme vormi + poster + “loe edasi” vaate nagu su referentsil.</p>
-          <button class="btnTiny" disabled>Avan varsti</button>
-        </div></div>
-        <div class="card"><div class="cardBody">
-          <h3>Firma ankeet (järgmine samm)</h3>
-          <p>Registrikood, aadress, IBAN, kontaktid, kasutajad jne.</p>
-          <button class="btnTiny" disabled>Avan varsti</button>
-        </div></div>
-        <div class="card"><div class="cardBody">
-          <h3>Check-in (järgmine samm)</h3>
-          <p>Ainult sisseloginuna. QR-koodiga kontroll.</p>
-          <button class="btnTiny" disabled>Avan varsti</button>
-        </div></div>
-      </div>
     `;
   }
 
-  function escapeHtml(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-  function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
-
-  // =========
-  // RENDER
-  // =========
-  function render(){
-    syncAuthUI();
-    const h = currentHash();
-    if(h.startsWith("#organizer")){
-      $app.innerHTML = organizerGate();
-      bindOrganizer();
-      return;
-    }
-    if(h.startsWith("#events")){
-      $app.innerHTML = eventsPage();
-      bindCommon();
-      return;
-    }
-    // default home
-    $app.innerHTML = homePage();
-    bindCommon();
-  }
+  function go(hash){ location.hash = hash; }
+  function currentHash(){ return location.hash || "#home"; }
 
   function bindCommon(){
     const q = document.getElementById("q");
@@ -407,10 +353,18 @@ Mis toimub:
     });
     if(btnSearch) btnSearch.addEventListener("click", ()=> render());
 
-    document.querySelectorAll("[data-open]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-open");
-        alert("Event page (loe edasi) teeme järgmisena — praegu fixisime ära ürituste kadumise + konto loomise.");
+    document.querySelectorAll("[data-card-open]").forEach(card => {
+      const id = card.getAttribute("data-card-open");
+      const open = () => {
+        const ev = getEvents().find(e => e.id === id);
+        if(ev) openEvent(ev);
+      };
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", (e)=> {
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          open();
+        }
       });
     });
   }
@@ -435,17 +389,33 @@ Mis toimub:
     if(logout2) logout2.addEventListener("click", ()=> { clearSession(); go("#home"); });
   }
 
-  // =========
-  // TOPBAR BUTTONS
-  // =========
-  $btnLogin.addEventListener("click", ()=> openAuth("login"));
-  $btnSignup.addEventListener("click", ()=> openAuth("signup"));
+  function render(){
+    syncAuthUI();
+    const h = currentHash();
+    if(h.startsWith("#organizer")){
+      $app.innerHTML = organizerGate();
+      bindOrganizer();
+      return;
+    }
+    if(h.startsWith("#events")){
+      $app.innerHTML = eventsPage();
+      bindCommon();
+      return;
+    }
+    $app.innerHTML = homePage();
+    bindCommon();
+  }
+
+  // Topbar actions
+  $btnAuth.addEventListener("click", ()=> openAuth("login"));
   $btnLogout.addEventListener("click", ()=> { clearSession(); go("#home"); });
 
+  // Auth modal controls
   authClose.addEventListener("click", closeAuth);
   authModal.addEventListener("click", (e)=> { if(e.target === authModal) closeAuth(); });
-  tabLogin.addEventListener("click", ()=> setAuthMode("login"));
-  tabSignup.addEventListener("click", ()=> setAuthMode("signup"));
+
+  toSignup.addEventListener("click", ()=> setAuthMode("signup"));
+  toLogin.addEventListener("click", ()=> setAuthMode("login"));
 
   formLogin.addEventListener("submit", (e)=> {
     e.preventDefault();
@@ -484,13 +454,18 @@ Mis toimub:
     users.push({ id, email, password, canOrganize: false });
     setUsers(users);
 
-    // demo: "konto loodud" teavitus UI-s (päris e-maili teeme API-ga hiljem)
-    toast("Konto loodud! Võid nüüd sisse logida.", "ok");
+    toast("Konto loodud! Logi nüüd sisse.", "ok");
     setAuthMode("login");
+    formLogin.querySelector('input[name="email"]').value = email;
+    formLogin.querySelector('input[name="password"]').focus();
   });
 
-  // =========
-  // FIRST RENDER
-  // =========
+  // Event modal controls
+  eventClose.addEventListener("click", closeEvent);
+  eventModal.addEventListener("click", (e)=> { if(e.target === eventModal) closeEvent(); });
+
+  // Router
+  window.addEventListener("hashchange", render);
+
   render();
 })();
