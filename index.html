@@ -141,30 +141,74 @@
   </div>
 
   <div class="checkoutGrid">
+    <!-- LEFT: CUSTOMER + PAYMENT -->
     <div class="panel">
-      <div class="panelHead"><div class="panelTitle">Tellija</div></div>
+      <div class="panelHead">
+        <div class="panelTitle">Tellija</div>
+      </div>
+
       <div class="panelBody">
         <div class="row2">
-          <div class="field"><label>Eesnimi</label><input id="firstName" placeholder="Eesnimi"></div>
-          <div class="field"><label>Perenimi</label><input id="lastName" placeholder="Perenimi"></div>
+          <div class="field"><label>Eesnimi *</label><input id="firstName" placeholder="Eesnimi" autocomplete="given-name"></div>
+          <div class="field"><label>Perenimi *</label><input id="lastName" placeholder="Perenimi" autocomplete="family-name"></div>
         </div>
 
-        <div class="field"><label>E-mail</label><input id="email" placeholder="E-mail"></div>
+        <div class="row2">
+          <div class="field"><label>E-mail *</label><input id="email" placeholder="E-mail" autocomplete="email"></div>
+          <div class="field"><label>Telefon *</label><input id="phone" placeholder="+372..." autocomplete="tel"></div>
+        </div>
 
-        <label class="check"><input type="checkbox" id="c1"><span>Nõustun tingimustega.</span></label>
-        <label class="check"><input type="checkbox" id="c2"><span>Mõistan, et pileteid müüb korraldaja.</span></label>
+        <div class="divider"></div>
+
+        <div class="panelTitle" style="margin-bottom:10px">Arveldusandmed</div>
+        <div class="row2">
+          <div class="field"><label>Riik *</label><input id="country" value="Eesti" autocomplete="country-name"></div>
+          <div class="field"><label>Linn *</label><input id="billCity" placeholder="Tallinn" autocomplete="address-level2"></div>
+        </div>
+        <div class="field"><label>Aadress *</label><input id="address" placeholder="Tartu mnt 1" autocomplete="street-address"></div>
+        <div class="row2">
+          <div class="field"><label>Postiindeks *</label><input id="zip" placeholder="10145" autocomplete="postal-code"></div>
+          <div class="field"><label>Ettevõte (valikuline)</label><input id="company" placeholder="OÜ Näide" autocomplete="organization"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="panelTitle" style="margin-bottom:10px">Maksmine</div>
+
+        <!-- Payment method (start with Montonio) -->
+        <div class="payMethods" role="radiogroup" aria-label="Maksmisviis">
+          <label class="payMethod">
+            <input type="radio" name="payMethod" value="montonio_bank" checked>
+            <div>
+              <div class="pmTitle">Montonio • Pangalingid</div>
+              <div class="pmSub">Turvaline suunamine panka</div>
+            </div>
+          </label>
+          <label class="payMethod disabled" aria-disabled="true" title="Lisame järgmises iteratsioonis">
+            <input type="radio" name="payMethod" value="card" disabled>
+            <div>
+              <div class="pmTitle">Kaardimakse</div>
+              <div class="pmSub">Tulekul</div>
+            </div>
+          </label>
+        </div>
+
+        <label class="check"><input type="checkbox" id="c1"><span>Nõustun kasutustingimuste ja privaatsustingimustega. *</span></label>
+        <label class="check"><input type="checkbox" id="c2"><span>Mõistan, et pileteid müüb korraldaja. *</span></label>
 
         <button class="btn btn-primary btn-pay" id="payBtn">MAKSMA</button>
         <div class="muted" id="mailHint"></div>
       </div>
     </div>
 
+    <!-- RIGHT: ORDER SUMMARY -->
     <div class="panel">
       <div class="panelHead"><div class="panelTitle">Tellimus</div></div>
       <div class="panelBody">
         <div id="orderLines"></div>
         <div class="divider"></div>
         <div class="totalRow"><span>Kokku</span><span id="orderTotal"></span></div>
+        <div class="muted" style="margin-top:10px" id="orderVatHint"></div>
       </div>
     </div>
   </div>
