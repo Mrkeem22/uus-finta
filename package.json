@@ -1,9 +1,17 @@
 {
-  "name": "pulsetickets-mvp",
+  "name": "ticketrise",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "description": "Ticketrise piletiplatvorm",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev",
+    "build": "echo \"static\""
+  },
   "dependencies": {
-    "qrcode": "^1.5.3",
-    "resend": "^4.0.0"
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.14",
+    "qrcode": "^1.5.4"
   }
 }
