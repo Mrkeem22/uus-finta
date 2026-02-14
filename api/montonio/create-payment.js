@@ -22,64 +22,60 @@ export default async function handler(req, res) {
     }
 
     // ENV
-    const MONTONIO_ENV = process.env.MONTONIO_ENV || "sandbox"; // sandbox | live
-    const MONTONIO_ACCESS_KEY = process.env.MONTONIO_ACCESS_KEY || "";
-    const MONTONIO_SECRET_KEY = process.env.MONTONIO_SECRET_KEY || "";
-    const MONTONIO_API_BASE = process.env.MONTONIO_API_BASE || "";
+    const env = process.env.MONTONIO_ENV || "sandbox"; // sandbox | live
+    const base = stripSlash(process.env.MONTONIO_API_BASE || "");
+    const accessKey = process.env.MONTONIO_ACCESS_KEY || "";
+    const secretKey = process.env.MONTONIO_SECRET_KEY || "";
 
-    // Preview mode (kui env pole seadistatud)
-    if (!MONTONIO_SECRET_KEY || !MONTONIO_API_BASE) {
+    // Preview mode (env puudu)
+    if (!base || !secretKey) {
       return res.status(200).json({
         ok: true,
         preview: true,
-        message: "Montonio ENV puudub (MONTONIO_SECRET_KEY / MONTONIO_API_BASE)."
+        message: "Montonio ENV puudub (MONTONIO_API_BASE / MONTONIO_SECRET_KEY)."
       });
     }
 
-    // Payload (üldine struktuur — kohandame 100% Montonio docs järgi järgmises osas)
+    // Payload (starter – kohandame 1:1 Montonio docs järgi hiljem)
     const payload = {
       merchantReference: orderId,
       currency: "EUR",
       amount: Number(total).toFixed(2),
-
       customer: {
-        email: customer.email,
-        firstName: customer.firstName || "",
-        lastName: customer.lastName || ""
+        email: String(customer.email || ""),
+        firstName: String(customer.firstName || ""),
+        lastName: String(customer.lastName || "")
       },
-
       items: items.map((i) => ({
-        name: i.name,
+        name: String(i.name || "Ticket"),
         quantity: Number(i.qty || 1),
-        unitPrice: Number(i.price).toFixed(2)
+        unitPrice: Number(i.price || 0).toFixed(2)
       })),
-
-      returnUrl: successUrl,
-      cancelUrl: cancelUrl,
-
+      returnUrl: String(successUrl || ""),
+      cancelUrl: String(cancelUrl || ""),
       meta: {
-        eventTitle: event.title,
-        eventId: event.id || "",
-        city: event.city || ""
+        eventTitle: String(event.title || ""),
+        eventId: String(event.id || ""),
+        city: String(event.city || "")
       }
     };
 
-    // Signed token (HS256) — “server-to-server” muster
-    const token = jwt.sign(payload, MONTONIO_SECRET_KEY, {
+    // JWT token (HS256) – “starter”
+    const token = jwt.sign(payload, secretKey, {
       algorithm: "HS256",
       expiresIn: "10m",
       issuer: "ticketrise",
-      audience: MONTONIO_ENV
+      audience: env
     });
 
-    // Endpoint (jääb praegu /payments — järgmises osas teeme täpselt Montonio järgi)
-    const endpoint = `${stripSlash(MONTONIO_API_BASE)}/payments`;
+    // Starter endpoint (tavaliselt see EI OLE lõplik – kohandame docs järgi)
+    const endpoint = `${base}/payments`;
 
     const r = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(MONTONIO_ACCESS_KEY ? { "X-Access-Key": MONTONIO_ACCESS_KEY } : {})
+        ...(accessKey ? { "X-Access-Key": accessKey } : {})
       },
       body: JSON.stringify({ token })
     });
@@ -95,7 +91,11 @@ export default async function handler(req, res) {
       });
     }
 
-    const paymentUrl = json.paymentUrl || json?.data?.paymentUrl || json?.redirectUrl || json?.data?.redirectUrl;
+    const paymentUrl =
+      json.paymentUrl ||
+      json.redirectUrl ||
+      json?.data?.paymentUrl ||
+      json?.data?.redirectUrl;
 
     if (!paymentUrl) {
       return res.status(502).json({
