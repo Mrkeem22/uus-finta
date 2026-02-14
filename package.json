@@ -10,6 +10,7 @@
     "build": "echo \"static\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.14",
     "qrcode": "^1.5.4",
