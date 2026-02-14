@@ -1,217 +1,323 @@
-const KEY="ticketrise_full_v1";
+const KEY = "ticketrise_full_v1";
 
-const $ = (s)=>document.querySelector(s);
-const money = (n)=>new Intl.NumberFormat("et-EE",{style:"currency",currency:"EUR"}).format(n);
-const uid = ()=>crypto.getRandomValues(new Uint32Array(4)).join("-")+"-"+Date.now().toString(16);
-const fmt = (iso)=>new Date(iso).toLocaleString("et-EE",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
-const toLocalInput = (iso)=>{
-  const d=new Date(iso);
-  const pad=(x)=>String(x).padStart(2,"0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const $ = (s) => document.querySelector(s);
+const money = (n) => new Intl.NumberFormat("et-EE", { style: "currency", currency: "EUR" }).format(n);
+const uid = () => crypto.getRandomValues(new Uint32Array(4)).join("-") + "-" + Date.now().toString(16);
+const fmt = (iso) =>
+  new Date(iso).toLocaleString("et-EE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+const toLocalInput = (iso) => {
+  const d = new Date(iso);
+  const pad = (x) => String(x).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-const fromLocalInput = (v)=> new Date(v).toISOString();
+const fromLocalInput = (v) => new Date(v).toISOString();
 
-const toastEl=$("#toast");
-const toast=(m)=>{
-  toastEl.textContent=m;
+const toastEl = $("#toast");
+let toastTimer = null;
+const toast = (m) => {
+  toastEl.textContent = m;
   toastEl.classList.remove("hidden");
-  setTimeout(()=>toastEl.classList.add("hidden"),2200);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.add("hidden"), 2200);
 };
 
-const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"");}catch{return null;}};
-const save=(d)=>localStorage.setItem(KEY, JSON.stringify(d));
+const apiPost = async (url, body) => {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j?.ok === false) throw new Error(j?.error || j?.message || `API error (${r.status})`);
+  return j;
+};
 
-const seed=()=>{
-  const now=new Date();
-  const addDays=(d)=>new Date(now.getTime()+d*86400000).toISOString();
-  const d={
-    settings:{ city:"" },
-    session:{ email:null, role:null },
-    users:[],
-    organizerProfiles:{}, // email -> profile
-    events:[
-      {
-        id:uid(),
-        ownerEmail:"demo@organizer.ee",
-        organizer:"Suvepeod Events",
-        title:"TARTU SUUR SÕBRAPÄEVA REIV | SIMI | LENE MA RUE",
-        category:"Muusika",
-        city:"tartu",
-        start:addDays(10),
-        end:null,
-        doors:"23:00",
-        age:"18+",
-        location:"KLUBI GUTENBERG - APARAADITEHAS, TARTU",
-        image:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=75",
-        desc:"LINEUP:\n• SIMI\n• LENE MA RUE\n\nUKSED: 23:00\nVANUSEPIIRANG: 18+\n\nTule varakult, pileteid on piiratud koguses!",
-        notes:["Võta ID kaasa (18+).","Sisenemine kuni 01:00 (vaata piletitüübi tingimusi).","Pileteid on piiratud koguses."],
-        socials:[{label:"Facebook",url:"#"}],
-        tickets:[
-          {id:uid(), name:"HILSEM SÕPS", price:15, total:200, sold:0, desc:"Sisenemine kuni 01:00"},
-          {id:uid(), name:"PRIORITY", price:25, total:80, sold:0, desc:"Kiirem sisenemine"}
-        ]
-      }
+// Pending order (enne Montonio redirecti)
+const PENDING_KEY = "ticketrise_pending_order_v1";
+const setPending = (x) => localStorage.setItem(PENDING_KEY, JSON.stringify(x || null));
+const getPending = () => {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+  } catch {
+    return null;
+  }
+};
+const clearPending = () => localStorage.removeItem(PENDING_KEY);
+
+const load = () => {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) || "");
+  } catch {
+    return null;
+  }
+};
+const save = (d) => localStorage.setItem(KEY, JSON.stringify(d));
+
+const seed = () => {
+  const now = new Date();
+  const addDays = (d) => new Date(now.getTime() + d * 86400000).toISOString();
+
+  const d = {
+    settings: { city: "" },
+    session: { email: null, role: null },
+
+    // ✅ demo kontod (et kohe testida)
+    users: [
+      { id: uid(), email: "demo@organizer.ee", pass: "demo123", role: "organizer" },
+      { id: uid(), email: "demo@buyer.ee", pass: "demo123", role: "buyer" },
     ],
-    orders:[]
+
+    organizerProfiles: {}, // email -> profile
+    events: [
+      {
+        id: uid(),
+        ownerEmail: "demo@organizer.ee",
+        organizer: "Suvepeod Events",
+        title: "TARTU SUUR SÕBRAPÄEVA REIV | SIMI | LENE MA RUE",
+        category: "Muusika",
+        city: "tartu",
+        start: addDays(10),
+        end: null,
+        doors: "23:00",
+        age: "18+",
+        location: "KLUBI GUTENBERG - APARAADITEHAS, TARTU",
+        image: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1800&q=75",
+        desc: "LINEUP:\n• SIMI\n• LENE MA RUE\n\nUKSED: 23:00\nVANUSEPIIRANG: 18+\n\nTule varakult, pileteid on piiratud koguses!",
+        notes: ["Võta ID kaasa (18+).", "Sisenemine kuni 01:00 (vaata piletitüübi tingimusi).", "Pileteid on piiratud koguses."],
+        socials: [{ label: "Facebook", url: "#" }],
+        tickets: [
+          { id: uid(), name: "HILSEM SÕPS", price: 15, total: 200, sold: 0, desc: "Sisenemine kuni 01:00" },
+          { id: uid(), name: "PRIORITY", price: 25, total: 80, sold: 0, desc: "Kiirem sisenemine" },
+        ],
+      },
+    ],
+    orders: [],
   };
-  save(d); return d;
+
+  save(d);
+  return d;
 };
 
 let data = load() || seed();
 
+/* ========================= UI HELPERS ========================= */
+const setBtnLoading = (btn, on, text) => {
+  if (!btn) return;
+  btn.disabled = !!on;
+  btn.dataset._orig = btn.dataset._orig || btn.textContent;
+  btn.textContent = on ? (text || "Ootan...") : btn.dataset._orig;
+};
+
+const normalizeEmail = (x) => String(x || "").trim().toLowerCase();
+
+const remaining = (t) => (t.total || 0) - (t.sold || 0);
+const minPrice = (ev) => Math.min(...(ev.tickets || []).map((t) => Number(t.price || 0)));
+
 /* ========================= AUTH ========================= */
-const authBack=$("#authBack");
-const refreshAuth=()=>{
-  const logged=!!data.session.email;
-  $("#btnDashboard").classList.toggle("hidden", !(logged && data.session.role==="organizer"));
+const authBack = $("#authBack");
+
+const refreshAuth = () => {
+  const logged = !!data.session.email;
+  $("#btnDashboard").classList.toggle("hidden", !(logged && data.session.role === "organizer"));
   $("#btnLogout").classList.toggle("hidden", !logged);
   $("#btnAuth").textContent = logged ? "Konto" : "Logi sisse";
 };
 refreshAuth();
 
-$("#btnAuth").onclick=()=>authBack.classList.remove("hidden");
-$("#authClose").onclick=()=>authBack.classList.add("hidden");
-authBack.onclick=(e)=>{ if(e.target===authBack) authBack.classList.add("hidden"); };
-
-$("#tabLogin").onclick=()=>{
-  $("#tabLogin").classList.add("active"); $("#tabRegister").classList.remove("active");
-  $("#loginView").classList.remove("hidden"); $("#registerView").classList.add("hidden");
-};
-$("#tabRegister").onclick=()=>{
-  $("#tabRegister").classList.add("active"); $("#tabLogin").classList.remove("active");
-  $("#registerView").classList.remove("hidden"); $("#loginView").classList.add("hidden");
+$("#btnAuth").onclick = () => authBack.classList.remove("hidden");
+$("#authClose").onclick = () => authBack.classList.add("hidden");
+authBack.onclick = (e) => {
+  if (e.target === authBack) authBack.classList.add("hidden");
 };
 
-$("#doRegister").onclick=()=>{
-  const email=$("#regEmail").value.trim().toLowerCase();
-  const pass=$("#regPass").value.trim();
-  const role=$("#regRole").value;
-  if(!email||!pass) return toast("Täida email ja parool.");
-  if(data.users.some(u=>u.email===email && u.role===role)) return toast("Konto juba olemas.");
-  data.users.push({id:uid(), email, pass, role});
-  data.session={email, role};
-  save(data); refreshAuth();
-  toast("Konto loodud ✅");
-  authBack.classList.add("hidden");
+$("#tabLogin").onclick = () => {
+  $("#tabLogin").classList.add("active");
+  $("#tabRegister").classList.remove("active");
+  $("#loginView").classList.remove("hidden");
+  $("#registerView").classList.add("hidden");
+};
+$("#tabRegister").onclick = () => {
+  $("#tabRegister").classList.add("active");
+  $("#tabLogin").classList.remove("active");
+  $("#registerView").classList.remove("hidden");
+  $("#loginView").classList.add("hidden");
 };
 
-$("#doLogin").onclick=()=>{
-  const email=$("#loginEmail").value.trim().toLowerCase();
-  const pass=$("#loginPass").value.trim();
-  const role=$("#loginRole").value;
-  const u=data.users.find(x=>x.email===email && x.pass===pass && x.role===role);
-  if(!u) return toast("Vale andmed või roll.");
-  data.session={email:u.email, role:u.role};
-  save(data); refreshAuth();
+const sendWelcomeMail = async (email) => {
+  try {
+    await apiPost("/api/send-ticket", { type: "welcome", to: email });
+  } catch {
+    // preview / ignore
+  }
+};
+
+const sendOrganizerProfileMail = async (email) => {
+  try {
+    await apiPost("/api/send-ticket", { type: "organizer_profile", to: email });
+  } catch {
+    // preview / ignore
+  }
+};
+
+$("#doRegister").onclick = async () => {
+  const btn = $("#doRegister");
+  const email = normalizeEmail($("#regEmail").value);
+  const pass = String($("#regPass").value || "").trim();
+  const role = $("#regRole").value;
+
+  if (!email || !email.includes("@") || !pass) return toast("Sisesta korrektne e-mail ja parool.");
+
+  if (data.users.some((u) => u.email === email && u.role === role)) return toast("Konto selle rolliga juba olemas.");
+
+  setBtnLoading(btn, true, "LOON...");
+  try {
+    data.users.push({ id: uid(), email, pass, role });
+    data.session = { email, role };
+    save(data);
+    refreshAuth();
+
+    toast("Konto loodud ✅");
+    authBack.classList.add("hidden");
+
+    // fire & forget welcome email
+    sendWelcomeMail(email);
+
+    // UX: kui organizer, suuna kohe dashboardi
+    if (role === "organizer") location.hash = "#org";
+  } finally {
+    setBtnLoading(btn, false);
+  }
+};
+
+$("#doLogin").onclick = () => {
+  const email = normalizeEmail($("#loginEmail").value);
+  const pass = String($("#loginPass").value || "").trim();
+  const role = $("#loginRole").value;
+
+  const u = data.users.find((x) => x.email === email && x.pass === pass && x.role === role);
+  if (!u) return toast("Vale andmed või roll.");
+
+  data.session = { email: u.email, role: u.role };
+  save(data);
+  refreshAuth();
+
   toast("Sisse logitud ✅");
   authBack.classList.add("hidden");
+
+  if (u.role === "organizer") location.hash = "#org";
 };
 
-$("#btnLogout").onclick=()=>{
-  data.session={email:null, role:null};
-  save(data); refreshAuth();
+$("#btnLogout").onclick = () => {
+  data.session = { email: null, role: null };
+  save(data);
+  refreshAuth();
   toast("Logisid välja.");
-  location.hash="#home";
+  location.hash = "#home";
 };
 
-$("#btnDashboard").onclick=()=>location.hash="#org";
+$("#btnDashboard").onclick = () => (location.hash = "#org");
 
 /* ========================= PAGES ========================= */
-const pages={
-  home:$("#pageHome"),
-  event:$("#pageEvent"),
-  checkout:$("#pageCheckout"),
-  org:$("#pageOrg"),
+const pages = {
+  home: $("#pageHome"),
+  event: $("#pageEvent"),
+  checkout: $("#pageCheckout"),
+  org: $("#pageOrg"),
 };
-const show=(name)=>{
-  Object.values(pages).forEach(p=>p.classList.remove("active"));
+
+const show = (name) => {
+  Object.values(pages).forEach((p) => p.classList.remove("active"));
   pages[name].classList.add("active");
 };
 
-let selectedEventId=null;
-let cart=null;
-
-const remaining=(t)=>t.total - t.sold;
-const minPrice=(ev)=>Math.min(...ev.tickets.map(t=>t.price));
+let selectedEventId = null;
+let cart = null;
 
 /* ========================= HOME LIST ========================= */
 $("#city").value = data.settings.city || "";
 
-const list=()=>{
-  const q=($("#q").value||"").trim().toLowerCase();
-  const city=$("#city").value || "";
-  data.settings.city=city; save(data);
+const list = () => {
+  const q = (String($("#q").value || "").trim().toLowerCase());
+  const city = $("#city").value || "";
 
-  let items=[...data.events];
+  data.settings.city = city;
+  save(data);
 
-  if(q){
-    items=items.filter(ev => (ev.title+" "+ev.organizer+" "+ev.location+" "+ev.category+" "+(ev.desc||"")).toLowerCase().includes(q));
+  let items = [...data.events];
+
+  if (q) {
+    items = items.filter((ev) =>
+      (ev.title + " " + ev.organizer + " " + ev.location + " " + ev.category + " " + (ev.desc || ""))
+        .toLowerCase()
+        .includes(q)
+    );
   }
-  if(city && city!=="all"){
-    items=items.filter(ev => (ev.city||"").toLowerCase()===city);
+  if (city && city !== "all") {
+    items = items.filter((ev) => String(ev.city || "").toLowerCase() === city);
   }
 
-  items.sort((a,b)=>new Date(a.start)-new Date(b.start));
+  items.sort((a, b) => new Date(a.start) - new Date(b.start));
   $("#countText").textContent = items.length ? `${items.length} tulemust` : `Tulemusi pole`;
 
-  const grid=$("#eventGrid");
-  grid.innerHTML="";
+  const grid = $("#eventGrid");
+  grid.innerHTML = "";
 
-  for(const ev of items){
-    const card=document.createElement("div");
-    card.className="card";
-    card.innerHTML=`
-      <div class="thumb"><img src="${ev.image}" alt="${ev.title}"></div>
+  for (const ev of items) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="thumb"><img src="${ev.image}" alt="${escapeHtml(ev.title)}"></div>
       <div class="cardBody">
-        <h3 class="cardTitle">${ev.title}</h3>
-        <div class="cardMeta">${fmt(ev.start)} • ${ev.location}</div>
+        <h3 class="cardTitle">${escapeHtml(ev.title)}</h3>
+        <div class="cardMeta">${fmt(ev.start)} • ${escapeHtml(ev.location)}</div>
         <div class="cardBottom">
           <div class="cardPrice">Al. ${money(minPrice(ev))}</div>
           <div class="cardCta">Osta pilet</div>
         </div>
       </div>
     `;
-    card.onclick=()=>{ location.hash=`#event-${ev.id}`; };
+    card.onclick = () => (location.hash = `#event-${ev.id}`);
     grid.appendChild(card);
   }
 
-  if(!items.length){
-    grid.innerHTML=`<div class="card" style="grid-column:1/-1"><div class="cardBody"><div class="muted" style="font-weight:900">Üritusi ei leitud.</div></div></div>`;
+  if (!items.length) {
+    grid.innerHTML = `<div class="card" style="grid-column:1/-1"><div class="cardBody"><div class="muted" style="font-weight:900">Üritusi ei leitud.</div></div></div>`;
   }
 };
 
-$("#doSearch").onclick=list;
+$("#doSearch").onclick = list;
 $("#q").addEventListener("input", list);
 $("#city").addEventListener("change", list);
 
 /* ========================= EVENT RENDER ========================= */
-const descToHtml=(text)=>{
-  const safe=(text||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const descToHtml = (text) => {
+  const safe = String(text || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return safe
     .split(/\n{2,}/g)
-    .map(p=>p.trim())
+    .map((p) => p.trim())
     .filter(Boolean)
-    .map(p=>`<p>${p.replace(/\n/g,"<br>")}</p>`)
+    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
     .join("");
 };
 
-const renderEvent=(ev)=>{
-  $("#evHeroImg").src=ev.image;
-  $("#evHeroImg").alt=ev.title;
+const renderEvent = (ev) => {
+  $("#evHeroImg").src = ev.image;
+  $("#evHeroImg").alt = ev.title;
 
-  const d=new Date(ev.start);
-  const day = d.toLocaleString("et-EE", { weekday:"short" }).toUpperCase();
-  const date = d.toLocaleDateString("et-EE",{ day:"2-digit", month:"long" }).toUpperCase();
-  const time = d.toLocaleTimeString("et-EE",{ hour:"2-digit", minute:"2-digit" });
+  const d = new Date(ev.start);
+  const day = d.toLocaleString("et-EE", { weekday: "short" }).toUpperCase();
+  const date = d.toLocaleDateString("et-EE", { day: "2-digit", month: "long" }).toUpperCase();
+  const time = d.toLocaleTimeString("et-EE", { hour: "2-digit", minute: "2-digit" });
 
   $("#evTopMeta").textContent = `${day} ${date} • ${ev.location} • ${time}`;
   $("#evTitle").textContent = ev.title;
 
-  const badges=$("#evBadges");
-  badges.innerHTML="";
-  const b1=document.createElement("div"); b1.textContent=(ev.city||"").toUpperCase();
-  const b2=document.createElement("div"); b2.textContent=`Uksed ${ev.doors || time}`;
-  const b3=document.createElement("div"); b3.textContent=`Vanus ${ev.age || "—"}`;
+  const badges = $("#evBadges");
+  badges.innerHTML = "";
+  const b1 = document.createElement("div"); b1.textContent = String(ev.city || "").toUpperCase();
+  const b2 = document.createElement("div"); b2.textContent = `Uksed ${ev.doors || time}`;
+  const b3 = document.createElement("div"); b3.textContent = `Vanus ${ev.age || "—"}`;
   badges.appendChild(b1); badges.appendChild(b2); badges.appendChild(b3);
 
   $("#evWhen").textContent = fmt(ev.start);
@@ -220,26 +326,26 @@ const renderEvent=(ev)=>{
   $("#evAge").textContent = ev.age || "—";
   $("#evDesc").innerHTML = descToHtml(ev.desc);
 
-  const fb=$("#evLink");
+  const fb = $("#evLink");
   fb.href = (ev.socials && ev.socials[0] && ev.socials[0].url) ? ev.socials[0].url : "#";
 
-  const notes=$("#evNotes");
-  notes.innerHTML="";
-  (ev.notes||[]).forEach(n=>{
-    const li=document.createElement("li");
-    li.textContent=n;
+  const notes = $("#evNotes");
+  notes.innerHTML = "";
+  (ev.notes || []).forEach((n) => {
+    const li = document.createElement("li");
+    li.textContent = n;
     notes.appendChild(li);
   });
 
-  const grid=$("#ticketsGrid");
-  grid.innerHTML="";
+  const grid = $("#ticketsGrid");
+  grid.innerHTML = "";
 
-  ev.tickets.forEach(t=>{
-    const rem=remaining(t);
+  ev.tickets.forEach((t) => {
+    const rem = remaining(t);
 
-    const box=document.createElement("div");
-    box.className="ticketCard";
-    box.innerHTML=`
+    const box = document.createElement("div");
+    box.className = "ticketCard";
+    box.innerHTML = `
       <div class="ticketTop2">
         <div>
           <div class="ticketType">PILET</div>
@@ -247,42 +353,42 @@ const renderEvent=(ev)=>{
         </div>
       </div>
 
-      <div class="ticketName2">${t.name}</div>
-      <div class="ticketFee">${t.desc ? t.desc : ""}</div>
-      <div class="ticketLimit">${rem<=0 ? "Välja müüdud" : `${rem} alles`}</div>
+      <div class="ticketName2">${escapeHtml(t.name)}</div>
+      <div class="ticketFee">${t.desc ? escapeHtml(t.desc) : ""}</div>
+      <div class="ticketLimit">${rem <= 0 ? "Välja müüdud" : `${rem} alles`}</div>
 
       <div class="ticketBottom2">
         <div class="stepper2">
-          <button data-act="minus" ${rem<=0?"disabled":""}>−</button>
-          <input value="1" inputmode="numeric" ${rem<=0?"disabled":""}>
-          <button data-act="plus" ${rem<=0?"disabled":""}>+</button>
+          <button data-act="minus" ${rem <= 0 ? "disabled" : ""}>−</button>
+          <input value="1" inputmode="numeric" ${rem <= 0 ? "disabled" : ""}>
+          <button data-act="plus" ${rem <= 0 ? "disabled" : ""}>+</button>
         </div>
-        <button class="buyBtn2" ${rem<=0?"disabled":""}>Osta</button>
+        <button class="buyBtn2" ${rem <= 0 ? "disabled" : ""}>Osta</button>
       </div>
     `;
 
-    const input=box.querySelector("input");
-    const minus=box.querySelector('[data-act="minus"]');
-    const plus=box.querySelector('[data-act="plus"]');
-    const buy=box.querySelector(".buyBtn2");
+    const input = box.querySelector("input");
+    const minus = box.querySelector('[data-act="minus"]');
+    const plus = box.querySelector('[data-act="plus"]');
+    const buy = box.querySelector(".buyBtn2");
 
-    const clamp=()=>{
-      let v=parseInt(input.value||"1",10);
-      if(isNaN(v)) v=1;
-      v=Math.max(1, Math.min(v, rem));
-      input.value=v;
+    const clamp = () => {
+      let v = parseInt(input.value || "1", 10);
+      if (isNaN(v)) v = 1;
+      v = Math.max(1, Math.min(v, rem));
+      input.value = String(v);
       return v;
     };
 
-    if(rem>0){
-      minus.onclick=()=>{input.value=parseInt(input.value||"1",10)-1; clamp();};
-      plus.onclick=()=>{input.value=parseInt(input.value||"1",10)+1; clamp();};
-      input.oninput=clamp;
+    if (rem > 0) {
+      minus.onclick = () => { input.value = String(parseInt(input.value || "1", 10) - 1); clamp(); };
+      plus.onclick = () => { input.value = String(parseInt(input.value || "1", 10) + 1); clamp(); };
+      input.oninput = clamp;
 
-      buy.onclick=()=>{
-        const qty=clamp();
-        cart={ eventId: ev.id, items:[{ticketId:t.id, name:t.name, price:t.price, qty}] };
-        location.hash="#checkout";
+      buy.onclick = () => {
+        const qty = clamp();
+        cart = { eventId: ev.id, items: [{ ticketId: t.id, name: t.name, price: t.price, qty }] };
+        location.hash = "#checkout";
       };
     }
 
@@ -290,228 +396,382 @@ const renderEvent=(ev)=>{
   });
 
   $("#evMore").classList.add("hidden");
-  $("#evMoreBtn").textContent="Loe rohkem";
+  $("#evMoreBtn").textContent = "Loe rohkem";
 };
 
-$("#evBack").onclick=()=>location.hash="#home";
-$("#evMoreBtn").onclick=()=>{
-  const more=$("#evMore");
-  const open=!more.classList.contains("hidden");
+$("#evBack").onclick = () => (location.hash = "#home");
+$("#evMoreBtn").onclick = () => {
+  const more = $("#evMore");
+  const open = !more.classList.contains("hidden");
   more.classList.toggle("hidden");
   $("#evMoreBtn").textContent = open ? "Loe rohkem" : "Sulge";
 };
 
+function escapeHtml(s) {
+  return String(s || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 /* ========================= CHECKOUT ========================= */
-const renderCheckout=()=>{
-  const ev=data.events.find(e=>e.id===cart?.eventId);
-  if(!ev) return;
+const renderCheckout = () => {
+  const ev = data.events.find((e) => e.id === cart?.eventId);
+  if (!ev) return;
 
-  $("#coLine").textContent=`${ev.title} • ${fmt(ev.start)} • ${ev.location}`;
-  $("#mailHint").textContent="(Demo) Päris QR+email teeme järgmise sammuna.";
+  $("#coLine").textContent = `${ev.title} • ${fmt(ev.start)} • ${ev.location}`;
+  $("#mailHint").textContent = "Pärast makset saadame QR-piletid e-mailile.";
 
-  const lines=$("#orderLines");
-  lines.innerHTML="";
+  const lines = $("#orderLines");
+  lines.innerHTML = "";
 
-  const total=cart.items.reduce((s,i)=>s+i.price*i.qty,0);
+  const total = cart.items.reduce((s, i) => s + i.price * i.qty, 0);
 
-  cart.items.forEach(i=>{
-    const row=document.createElement("div");
-    row.className="orderLine";
-    row.innerHTML=`<span><b>${i.name}</b><small>${i.qty} × ${money(i.price)}</small></span><span>${money(i.price*i.qty)}</span>`;
+  cart.items.forEach((i) => {
+    const row = document.createElement("div");
+    row.className = "orderLine";
+    row.innerHTML = `<span><b>${escapeHtml(i.name)}</b><small>${i.qty} × ${money(i.price)}</small></span><span>${money(i.price * i.qty)}</span>`;
     lines.appendChild(row);
   });
 
-  $("#orderTotal").textContent=money(total);
+  $("#orderTotal").textContent = money(total);
+  $("#orderVatHint").textContent = "NB! Demo projekt: maksuloogika / arved saab lisada järgmises etapis.";
 };
 
-$("#coBack").onclick=()=>location.hash=`#event-${cart?.eventId||selectedEventId||""}`;
+$("#coBack").onclick = () => (location.hash = `#event-${cart?.eventId || selectedEventId || ""}`);
 
-$("#payBtn").onclick=()=>{
-  if(!cart) return;
-  const fn=$("#firstName").value.trim();
-  const ln=$("#lastName").value.trim();
-  const em=$("#email").value.trim();
-  if(!fn||!ln||!em) return toast("Täida kõik väljad.");
-  if(!$("#c1").checked || !$("#c2").checked) return toast("Tee mõlemad nõusolekud.");
+const buildTicketsForEmail = (pending, orderId) => {
+  const tickets = [];
+  for (const it of pending.items) {
+    for (let k = 0; k < it.qty; k++) {
+      tickets.push({ ticketName: it.name, code: uid() });
+    }
+  }
+  return { id: orderId, tickets };
+};
 
-  const ev=data.events.find(e=>e.id===cart.eventId);
-  if(!ev) return toast("Üritust ei leitud.");
-
-  for(const it of cart.items){
-    const t=ev.tickets.find(x=>x.id===it.ticketId);
-    if(!t) return toast("Piletitüüp puudu.");
-    if(it.qty>remaining(t)) return toast("Pole piisavalt pileteid.");
+const finalizePendingOrder = async (paidMode) => {
+  const pending = getPending();
+  if (!pending) {
+    toast("Tellimust ei leitud.");
+    location.hash = "#home";
+    return;
   }
 
-  for(const it of cart.items){
-    const t=ev.tickets.find(x=>x.id===it.ticketId);
-    t.sold += it.qty;
+  const ev = data.events.find((e) => e.id === pending.eventId);
+  if (!ev) {
+    clearPending();
+    toast("Üritust ei leitud.");
+    location.hash = "#home";
+    return;
   }
 
-  data.orders.push({
-    id:uid(),
-    eventId:ev.id,
-    buyerName:`${fn} ${ln}`,
-    buyerEmail:em,
-    items:cart.items,
-    total:cart.items.reduce((s,i)=>s+i.price*i.qty,0),
-    createdAt:new Date().toISOString()
-  });
+  // Re-check availability (just in case)
+  for (const it of pending.items) {
+    const t = ev.tickets.find((x) => x.id === it.ticketId);
+    if (!t) continue;
+    if (it.qty > remaining(t)) {
+      clearPending();
+      toast("Vahepeal said piletid otsa. Palun vali uuesti.");
+      location.hash = `#event-${ev.id}`;
+      return;
+    }
+  }
 
+  // Decrease stock
+  for (const it of pending.items) {
+    const t = ev.tickets.find((x) => x.id === it.ticketId);
+    if (!t) continue;
+    t.sold = (t.sold || 0) + it.qty;
+  }
+
+  const orderId = pending.id;
+  const total = pending.items.reduce((s, i) => s + i.price * i.qty, 0);
+
+  const order = {
+    id: orderId,
+    eventId: ev.id,
+    buyerName: `${pending.buyer.firstName} ${pending.buyer.lastName}`,
+    buyerEmail: pending.buyer.email,
+    items: pending.items,
+    total,
+    paidMode: paidMode || "unknown",
+    createdAt: pending.createdAt || new Date().toISOString(),
+  };
+
+  data.orders.push(order);
   save(data);
-  toast("Tellimus tehtud ✅ (demo)");
-  cart=null;
-  location.hash="#home";
+
+  // Email tickets (Resend or SMTP fallback via /api/send-ticket)
+  const mailTickets = buildTicketsForEmail(pending, orderId);
+
+  try {
+    await apiPost("/api/send-ticket", {
+      type: "tickets",
+      to: pending.buyer.email,
+      order: {
+        id: orderId,
+        eventId: ev.id,
+        total: total,
+        buyer: pending.buyer,
+        tickets: mailTickets.tickets,
+      },
+      event: {
+        title: ev.title,
+        image: ev.image,
+        location: ev.location,
+        city: ev.city,
+        startISO: ev.start,
+      },
+    });
+  } catch {
+    // preview / ignore
+  }
+
+  clearPending();
+  cart = null;
+
+  toast("Makstud ✅ Piletid saadetud e-mailile.");
+  location.hash = "#home";
   list();
 };
 
-/* ========================= ORGANIZER: FULL GAME ========================= */
-const requireOrganizer=()=>{
-  const ok=!!data.session.email && data.session.role==="organizer";
-  if(!ok){
+$("#payBtn").onclick = async () => {
+  if (!cart) return;
+
+  // basic customer validation
+  const fn = $("#firstName").value.trim();
+  const ln = $("#lastName").value.trim();
+  const em = normalizeEmail($("#email").value);
+  const phone = $("#phone").value.trim();
+
+  if (!fn || !ln || !em || !em.includes("@") || !phone) return toast("Täida kõik kohustuslikud väljad.");
+  if (!$("#c1").checked || !$("#c2").checked) return toast("Tee mõlemad nõusolekud.");
+
+  const ev = data.events.find((e) => e.id === cart.eventId);
+  if (!ev) return toast("Üritust ei leitud.");
+
+  // availability check
+  for (const it of cart.items) {
+    const t = ev.tickets.find((x) => x.id === it.ticketId);
+    if (!t) return toast("Piletitüüp puudu.");
+    if (it.qty > remaining(t)) return toast("Pole piisavalt pileteid.");
+  }
+
+  const total = cart.items.reduce((s, i) => s + i.price * i.qty, 0);
+  const orderId = uid();
+
+  // Save pending before redirect
+  const pending = {
+    id: orderId,
+    eventId: ev.id,
+    buyer: { firstName: fn, lastName: ln, email: em, phone },
+    items: cart.items.map((i) => ({ ...i })),
+    total,
+    createdAt: new Date().toISOString(),
+  };
+  setPending(pending);
+
+  // Hash-router return/cancel
+  const origin = location.origin;
+  const successUrl = `${origin}/#pay-success`;
+  const cancelUrl = `${origin}/#pay-cancel`;
+
+  const btn = $("#payBtn");
+  setBtnLoading(btn, true, "SUUNAN PANKA...");
+
+  try {
+    const r = await apiPost("/api/montonio/create-payment", {
+      orderId,
+      customer: { email: em, firstName: fn, lastName: ln },
+      event: { id: ev.id, title: ev.title, city: ev.city },
+      items: cart.items.map((i) => ({ name: i.name, qty: i.qty, price: i.price })),
+      total,
+      successUrl,
+      cancelUrl,
+    });
+
+    // Preview -> finalize as demo payment
+    if (r.preview) {
+      toast("Montonio pole seadistatud — teen demo makse ✅");
+      await finalizePendingOrder("preview");
+      return;
+    }
+
+    if (!r.paymentUrl) {
+      toast("Makse link puudub — teen demo makse ✅");
+      await finalizePendingOrder("no_url");
+      return;
+    }
+
+    // redirect
+    window.location.href = r.paymentUrl;
+  } catch (e) {
+    toast("Makse viga — teen demo makse ✅");
+    await finalizePendingOrder("fallback");
+  } finally {
+    setBtnLoading(btn, false);
+  }
+};
+/* ========================= ORGANIZER ========================= */
+const requireOrganizer = () => {
+  const ok = !!data.session.email && data.session.role === "organizer";
+  if (!ok) {
     toast("Logi korraldajana sisse.");
     authBack.classList.remove("hidden");
   }
   return ok;
 };
 
-const setOrgTab=(name)=>{
-  const tabs=["orgProfile","orgEvents","orgAnalytics"];
-  tabs.forEach(id=>$("#"+id).classList.add("hidden"));
-  $("#"+name).classList.remove("hidden");
+const setOrgTab = (name) => {
+  const tabs = ["orgProfile", "orgEvents", "orgAnalytics"];
+  tabs.forEach((id) => $("#" + id).classList.add("hidden"));
+  $("#" + name).classList.remove("hidden");
 };
 
-$("#tabProfile").onclick=()=>setOrgTab("orgProfile");
-$("#tabEvents").onclick=()=>setOrgTab("orgEvents");
-$("#tabAnalytics").onclick=()=>{ setOrgTab("orgAnalytics"); renderAnalytics(); };
+$("#tabProfile").onclick = () => setOrgTab("orgProfile");
+$("#tabEvents").onclick = () => setOrgTab("orgEvents");
+$("#tabAnalytics").onclick = () => { setOrgTab("orgAnalytics"); renderAnalytics(); };
 
-let editingEventId=null;
+let editingEventId = null;
 
-const myEvents=()=>{
-  const email=data.session.email;
-  return data.events.filter(e=>e.ownerEmail===email);
+const myEvents = () => {
+  const email = data.session.email;
+  return data.events.filter((e) => e.ownerEmail === email);
 };
 
-const profileFor=()=> data.organizerProfiles[data.session.email] || null;
+const profileFor = () => data.organizerProfiles[data.session.email] || null;
 
-const profileComplete=(p)=>{
-  if(!p) return false;
-  const req=["company","reg","country","address","contact","phone","email","iban","terms"];
-  return req.every(k=>String(p[k]||"").trim().length>0);
+const profileComplete = (p) => {
+  if (!p) return false;
+  const req = ["company", "reg", "country", "address", "contact", "phone", "email", "iban", "terms"];
+  return req.every((k) => String(p[k] || "").trim().length > 0);
 };
 
-const refreshProfileStatus=()=>{
-  const p=profileFor();
+const refreshProfileStatus = () => {
+  const p = profileFor();
   $("#profileStatus").textContent = profileComplete(p) ? "Profiil: OK ✅" : "Profiil: puudulik ⚠️";
 };
 
-const loadProfileToForm=()=>{
-  const p=profileFor() || {};
-  $("#p_company").value=p.company||"";
-  $("#p_reg").value=p.reg||"";
-  $("#p_vat").value=p.vat||"";
-  $("#p_country").value=p.country||"Eesti";
-  $("#p_address").value=p.address||"";
-  $("#p_contact").value=p.contact||"";
-  $("#p_phone").value=p.phone||"";
-  $("#p_email").value=p.email||"";
-  $("#p_iban").value=p.iban||"";
-  $("#p_bank").value=p.bank||"";
-  $("#p_terms").checked=!!p.terms;
+const loadProfileToForm = () => {
+  const p = profileFor() || {};
+  $("#p_company").value = p.company || "";
+  $("#p_reg").value = p.reg || "";
+  $("#p_vat").value = p.vat || "";
+  $("#p_country").value = p.country || "Eesti";
+  $("#p_address").value = p.address || "";
+  $("#p_contact").value = p.contact || "";
+  $("#p_phone").value = p.phone || "";
+  $("#p_email").value = p.email || "";
+  $("#p_iban").value = p.iban || "";
+  $("#p_bank").value = p.bank || "";
+  $("#p_terms").checked = !!p.terms;
   refreshProfileStatus();
 };
 
-$("#saveProfileBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+$("#saveProfileBtn").onclick = async () => {
+  if (!requireOrganizer()) return;
 
-  const p={
-    company:$("#p_company").value.trim(),
-    reg:$("#p_reg").value.trim(),
-    vat:$("#p_vat").value.trim(),
-    country:$("#p_country").value.trim(),
-    address:$("#p_address").value.trim(),
-    contact:$("#p_contact").value.trim(),
-    phone:$("#p_phone").value.trim(),
-    email:$("#p_email").value.trim(),
-    iban:$("#p_iban").value.trim(),
-    bank:$("#p_bank").value.trim(),
-    terms: $("#p_terms").checked ? "yes" : ""
-  };
+  const btn = $("#saveProfileBtn");
+  setBtnLoading(btn, true, "SALVESTAN...");
 
-  data.organizerProfiles[data.session.email]=p;
-  save(data);
-  refreshProfileStatus();
-  toast(profileComplete(p) ? "Profiil salvestatud ✅" : "Profiil salvestatud, aga täida * väljad.");
+  try {
+    const p = {
+      company: $("#p_company").value.trim(),
+      reg: $("#p_reg").value.trim(),
+      vat: $("#p_vat").value.trim(),
+      country: $("#p_country").value.trim(),
+      address: $("#p_address").value.trim(),
+      contact: $("#p_contact").value.trim(),
+      phone: $("#p_phone").value.trim(),
+      email: normalizeEmail($("#p_email").value),
+      iban: $("#p_iban").value.trim(),
+      bank: $("#p_bank").value.trim(),
+      terms: $("#p_terms").checked ? "yes" : "",
+    };
+
+    data.organizerProfiles[data.session.email] = p;
+    save(data);
+    refreshProfileStatus();
+
+    toast(profileComplete(p) ? "Profiil salvestatud ✅" : "Salvestatud, aga täida kõik * väljad.");
+
+    // fire & forget email
+    sendOrganizerProfileMail(p.email || data.session.email);
+  } finally {
+    setBtnLoading(btn, false);
+  }
 };
 
-const resetEventForm=()=>{
-  editingEventId=null;
-  $("#editMeta").textContent="Uus üritus";
+const resetEventForm = () => {
+  editingEventId = null;
+  $("#editMeta").textContent = "Uus üritus";
   $("#deleteEventBtn").classList.add("hidden");
 
-  $("#f_title").value="";
-  $("#f_category").value="";
-  $("#f_city").value="tallinn";
-  $("#f_start").value="";
-  $("#f_end").value="";
-  $("#f_doors").value="";
-  $("#f_age").value="18+";
-  $("#f_organizer").value=(profileFor()?.company || data.session.email.split("@")[0]);
-  $("#f_location").value="";
-  $("#f_image").value="";
-  $("#f_desc").value="";
-  $("#f_notes").value="";
-  $("#ticketEditor").innerHTML="";
+  $("#f_title").value = "";
+  $("#f_category").value = "";
+  $("#f_city").value = "tallinn";
+  $("#f_start").value = "";
+  $("#f_end").value = "";
+  $("#f_doors").value = "";
+  $("#f_age").value = "18+";
+  $("#f_organizer").value = profileFor()?.company || data.session.email.split("@")[0];
+  $("#f_location").value = "";
+  $("#f_image").value = "";
+  $("#f_desc").value = "";
+  $("#f_notes").value = "";
+  $("#ticketEditor").innerHTML = "";
 };
 
-const addTicketRow=(t=null)=>{
-  const row=document.createElement("div");
-  row.className="ticketRow";
-  row.dataset.id=t?.id || uid();
-  row.innerHTML=`
+const addTicketRow = (t = null) => {
+  const row = document.createElement("div");
+  row.className = "ticketRow";
+  row.dataset.id = t?.id || uid();
+  row.innerHTML = `
     <div class="ticketRowTop">
       <b>Pilet</b>
       <button class="btn btn-ghost" data-act="remove">Eemalda</button>
     </div>
     <div class="ticketRowGrid">
-      <div class="field"><label>Nimi *</label><input data-k="name" value="${t?.name||""}" placeholder="Tavapilet"></div>
-      <div class="field"><label>Hind (€) *</label><input data-k="price" inputmode="decimal" value="${t?.price??""}" placeholder="15"></div>
-      <div class="field"><label>Kogus *</label><input data-k="total" inputmode="numeric" value="${t?.total??""}" placeholder="200"></div>
+      <div class="field"><label>Nimi *</label><input data-k="name" value="${escapeHtml(t?.name || "")}" placeholder="Tavapilet"></div>
+      <div class="field"><label>Hind (€) *</label><input data-k="price" inputmode="decimal" value="${t?.price ?? ""}" placeholder="15"></div>
+      <div class="field"><label>Kogus *</label><input data-k="total" inputmode="numeric" value="${t?.total ?? ""}" placeholder="200"></div>
     </div>
     <div class="field" style="margin-top:10px">
       <label>Kirjeldus (valikuline)</label>
-      <input data-k="desc" value="${t?.desc||""}" placeholder="Sisenemine kuni 01:00">
+      <input data-k="desc" value="${escapeHtml(t?.desc || "")}" placeholder="Sisenemine kuni 01:00">
     </div>
   `;
-  row.querySelector('[data-act="remove"]').onclick=()=>row.remove();
+  row.querySelector('[data-act="remove"]').onclick = () => row.remove();
   $("#ticketEditor").appendChild(row);
 };
 
-$("#addTicketBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+$("#addTicketBtn").onclick = () => {
+  if (!requireOrganizer()) return;
   addTicketRow();
 };
 
-const renderOrgList=()=>{
-  const listEl=$("#orgList");
-  listEl.innerHTML="";
+const renderOrgList = () => {
+  const listEl = $("#orgList");
+  listEl.innerHTML = "";
 
-  const items=myEvents().sort((a,b)=>new Date(a.start)-new Date(b.start));
-  if(!items.length){
-    listEl.innerHTML=`<div class="muted" style="font-weight:900">Sul pole veel üritusi. Vajuta “Uus üritus”.</div>`;
+  const items = myEvents().sort((a, b) => new Date(a.start) - new Date(b.start));
+  if (!items.length) {
+    listEl.innerHTML = `<div class="muted" style="font-weight:900">Sul pole veel üritusi. Vajuta “Uus üritus”.</div>`;
     return;
   }
 
-  for(const ev of items){
-    const sold=ev.tickets.reduce((s,t)=>s+(t.sold||0),0);
-    const revenue=data.orders.filter(o=>o.eventId===ev.id).reduce((s,o)=>s+(o.total||0),0);
+  for (const ev of items) {
+    const sold = ev.tickets.reduce((s, t) => s + (t.sold || 0), 0);
+    const revenue = data.orders.filter((o) => o.eventId === ev.id).reduce((s, o) => s + (o.total || 0), 0);
 
-    const box=document.createElement("div");
-    box.className="orgItem";
-    box.innerHTML=`
+    const box = document.createElement("div");
+    box.className = "orgItem";
+    box.innerHTML = `
       <div>
-        <b>${ev.title}</b>
-        <div class="muted">${fmt(ev.start)} • ${(ev.city||"").toUpperCase()} • ${ev.location}</div>
+        <b>${escapeHtml(ev.title)}</b>
+        <div class="muted">${fmt(ev.start)} • ${(ev.city || "").toUpperCase()} • ${escapeHtml(ev.location)}</div>
         <div class="muted">Müüdud: ${sold} • Tulu: ${money(revenue)}</div>
       </div>
       <div class="orgItemActions">
@@ -519,42 +779,42 @@ const renderOrgList=()=>{
         <button class="btn btn-ghost" data-act="open">Ava</button>
       </div>
     `;
-    box.querySelector('[data-act="edit"]').onclick=()=>loadEventToForm(ev.id);
-    box.querySelector('[data-act="open"]').onclick=()=>location.hash=`#event-${ev.id}`;
+    box.querySelector('[data-act="edit"]').onclick = () => loadEventToForm(ev.id);
+    box.querySelector('[data-act="open"]').onclick = () => (location.hash = `#event-${ev.id}`);
     listEl.appendChild(box);
   }
 };
 
-const loadEventToForm=(id)=>{
-  const ev=data.events.find(e=>e.id===id);
-  if(!ev) return;
-  editingEventId=id;
+const loadEventToForm = (id) => {
+  const ev = data.events.find((e) => e.id === id);
+  if (!ev) return;
 
-  $("#editMeta").textContent=`Muudad: ${ev.title}`;
+  editingEventId = id;
+  $("#editMeta").textContent = `Muudad: ${ev.title}`;
   $("#deleteEventBtn").classList.remove("hidden");
 
-  $("#f_title").value=ev.title||"";
-  $("#f_category").value=ev.category||"";
-  $("#f_city").value=ev.city||"tallinn";
-  $("#f_start").value=toLocalInput(ev.start);
-  $("#f_end").value=ev.end ? toLocalInput(ev.end) : "";
-  $("#f_doors").value=ev.doors || "";
-  $("#f_age").value=ev.age || "18+";
-  $("#f_organizer").value=ev.organizer || "";
-  $("#f_location").value=ev.location||"";
-  $("#f_image").value=ev.image||"";
-  $("#f_desc").value=ev.desc||"";
-  $("#f_notes").value=(ev.notes||[]).join("\n");
+  $("#f_title").value = ev.title || "";
+  $("#f_category").value = ev.category || "";
+  $("#f_city").value = ev.city || "tallinn";
+  $("#f_start").value = toLocalInput(ev.start);
+  $("#f_end").value = ev.end ? toLocalInput(ev.end) : "";
+  $("#f_doors").value = ev.doors || "";
+  $("#f_age").value = ev.age || "18+";
+  $("#f_organizer").value = ev.organizer || "";
+  $("#f_location").value = ev.location || "";
+  $("#f_image").value = ev.image || "";
+  $("#f_desc").value = ev.desc || "";
+  $("#f_notes").value = (ev.notes || []).join("\n");
 
-  $("#ticketEditor").innerHTML="";
-  (ev.tickets||[]).forEach(t=>addTicketRow(t));
+  $("#ticketEditor").innerHTML = "";
+  (ev.tickets || []).forEach((t) => addTicketRow(t));
 };
 
-$("#newEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+$("#newEventBtn").onclick = () => {
+  if (!requireOrganizer()) return;
 
-  const p=profileFor();
-  if(!profileComplete(p)){
+  const p = profileFor();
+  if (!profileComplete(p)) {
     setOrgTab("orgProfile");
     toast("Enne ürituse loomist täida firma ankeet (* väljad).");
     loadProfileToForm();
@@ -567,89 +827,104 @@ $("#newEventBtn").onclick=()=>{
   toast("Uus üritus: täida väljad ja salvesta.");
 };
 
-$("#saveEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
+$("#saveEventBtn").onclick = () => {
+  if (!requireOrganizer()) return;
 
-  const p=profileFor();
-  if(!profileComplete(p)){
+  const p = profileFor();
+  if (!profileComplete(p)) {
     setOrgTab("orgProfile");
     toast("Täida firma profiil lõpuni enne salvestamist.");
     return;
   }
 
-  const title=$("#f_title").value.trim();
-  const category=$("#f_category").value.trim();
-  const city=$("#f_city").value;
-  const startVal=$("#f_start").value;
-  const endVal=$("#f_end").value;
-  const doors=$("#f_doors").value.trim();
-  const age=$("#f_age").value.trim();
-  const organizer=$("#f_organizer").value.trim();
-  const location=$("#f_location").value.trim();
-  const image=$("#f_image").value.trim();
-  const desc=$("#f_desc").value.trim();
-  const notes=$("#f_notes").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  const title = $("#f_title").value.trim();
+  const category = $("#f_category").value.trim();
+  const city = $("#f_city").value;
+  const startVal = $("#f_start").value;
+  const endVal = $("#f_end").value;
+  const doors = $("#f_doors").value.trim();
+  const age = $("#f_age").value.trim();
+  const organizer = $("#f_organizer").value.trim();
+  const locationStr = $("#f_location").value.trim();
+  const image = $("#f_image").value.trim();
+  const desc = $("#f_desc").value.trim();
+  const notes = $("#f_notes").value.split("\n").map((x) => x.trim()).filter(Boolean);
 
-  if(!title||!category||!startVal||!age||!organizer||!location||!image||!desc){
+  if (!title || !category || !startVal || !age || !organizer || !locationStr || !image || !desc) {
     return toast("Täida kõik * vajalikud väljad (pealkiri, kategooria, algus, vanus, korraldaja, asukoht, pilt, kirjeldus).");
   }
 
-  const rows=[...$("#ticketEditor").querySelectorAll(".ticketRow")];
-  if(!rows.length) return toast("Lisa vähemalt 1 piletitüüp.");
+  const rows = [...$("#ticketEditor").querySelectorAll(".ticketRow")];
+  if (!rows.length) return toast("Lisa vähemalt 1 piletitüüp.");
 
-  const tickets=[];
-  for(const r of rows){
-    const get=(k)=>r.querySelector(`[data-k="${k}"]`).value.trim();
-    const name=get("name");
-    const price=Number(get("price").replace(",","."));
-    const total=Number(get("total"));
-    const descT=get("desc");
+  const tickets = [];
+  for (const r of rows) {
+    const get = (k) => r.querySelector(`[data-k="${k}"]`).value.trim();
+    const name = get("name");
+    const price = Number(get("price").replace(",", "."));
+    const total = Number(get("total"));
+    const descT = get("desc");
 
-    if(!name) return toast("Piletinimi puudub.");
-    if(!Number.isFinite(price) || price<=0) return toast("Piletihind peab olema > 0.");
-    if(!Number.isFinite(total) || total<=0) return toast("Piletikogus peab olema > 0.");
+    if (!name) return toast("Piletinimi puudub.");
+    if (!Number.isFinite(price) || price <= 0) return toast("Piletihind peab olema > 0.");
+    if (!Number.isFinite(total) || total <= 0) return toast("Piletikogus peab olema > 0.");
 
-    const existingId=r.dataset.id;
-    const existingEv=editingEventId ? data.events.find(e=>e.id===editingEventId) : null;
-    const existingTicket=existingEv?.tickets?.find(t=>t.id===existingId);
+    const existingId = r.dataset.id;
+    const existingEv = editingEventId ? data.events.find((e) => e.id === editingEventId) : null;
+    const existingTicket = existingEv?.tickets?.find((t) => t.id === existingId);
 
     tickets.push({
-      id:existingId || uid(),
+      id: existingId || uid(),
       name,
       price,
       total,
       sold: existingTicket?.sold || 0,
-      desc: descT
+      desc: descT,
     });
   }
 
-  if(editingEventId){
-    const ev=data.events.find(e=>e.id===editingEventId);
-    if(!ev) return toast("Üritust ei leitud.");
-    Object.assign(ev,{
-      title, category, city,
+  if (editingEventId) {
+    const ev = data.events.find((e) => e.id === editingEventId);
+    if (!ev) return toast("Üritust ei leitud.");
+
+    Object.assign(ev, {
+      title,
+      category,
+      city,
       start: fromLocalInput(startVal),
       end: endVal ? fromLocalInput(endVal) : null,
-      doors, age, organizer,
-      location, image, desc,
+      doors,
+      age,
+      organizer,
+      location: locationStr,
+      image,
+      desc,
       notes,
       tickets,
-      ownerEmail: data.session.email
+      ownerEmail: data.session.email,
     });
+
     toast("Üritus salvestatud ✅");
   } else {
     data.events.push({
-      id:uid(),
-      ownerEmail:data.session.email,
-      title, category, city,
+      id: uid(),
+      ownerEmail: data.session.email,
+      title,
+      category,
+      city,
       start: fromLocalInput(startVal),
       end: endVal ? fromLocalInput(endVal) : null,
-      doors, age, organizer,
-      location, image, desc,
+      doors,
+      age,
+      organizer,
+      location: locationStr,
+      image,
+      desc,
       notes,
-      socials:[{label:"Facebook",url:"#"}],
-      tickets
+      socials: [{ label: "Facebook", url: "#" }],
+      tickets,
     });
+
     toast("Üritus loodud ✅");
   }
 
@@ -658,12 +933,12 @@ $("#saveEventBtn").onclick=()=>{
   list();
 };
 
-$("#deleteEventBtn").onclick=()=>{
-  if(!requireOrganizer()) return;
-  if(!editingEventId) return;
+$("#deleteEventBtn").onclick = () => {
+  if (!requireOrganizer()) return;
+  if (!editingEventId) return;
 
-  data.events = data.events.filter(e=>e.id!==editingEventId);
-  data.orders = data.orders.filter(o=>o.eventId!==editingEventId);
+  data.events = data.events.filter((e) => e.id !== editingEventId);
+  data.orders = data.orders.filter((o) => o.eventId !== editingEventId);
   save(data);
 
   toast("Üritus kustutatud.");
@@ -672,71 +947,88 @@ $("#deleteEventBtn").onclick=()=>{
   list();
 };
 
-const renderAnalytics=()=>{
-  const events=myEvents();
-  const ids=new Set(events.map(e=>e.id));
-  const orders=data.orders.filter(o=>ids.has(o.eventId));
+const renderAnalytics = () => {
+  const events = myEvents();
+  const ids = new Set(events.map((e) => e.id));
+  const orders = data.orders.filter((o) => ids.has(o.eventId));
 
-  const revenue=orders.reduce((s,o)=>s+(o.total||0),0);
-  const sold=events.reduce((s,ev)=>s+ev.tickets.reduce((a,t)=>a+(t.sold||0),0),0);
+  const revenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const sold = events.reduce((s, ev) => s + ev.tickets.reduce((a, t) => a + (t.sold || 0), 0), 0);
 
   $("#kpiRevenue").textContent = money(revenue);
   $("#kpiTickets").textContent = String(sold);
   $("#kpiOrders").textContent = String(orders.length);
   $("#kpiEvents").textContent = String(events.length);
 
-  const tbody=$("#analyticsRows");
-  tbody.innerHTML="";
+  const tbody = $("#analyticsRows");
+  tbody.innerHTML = "";
 
   events
-    .sort((a,b)=>new Date(a.start)-new Date(b.start))
-    .forEach(ev=>{
-      const evOrders=orders.filter(o=>o.eventId===ev.id);
-      const evRev=evOrders.reduce((s,o)=>s+(o.total||0),0);
-      const evSold=ev.tickets.reduce((s,t)=>s+(t.sold||0),0);
+    .sort((a, b) => new Date(a.start) - new Date(b.start))
+    .forEach((ev) => {
+      const evOrders = orders.filter((o) => o.eventId === ev.id);
+      const evRev = evOrders.reduce((s, o) => s + (o.total || 0), 0);
+      const evSold = ev.tickets.reduce((s, t) => s + (t.sold || 0), 0);
 
-      const tr=document.createElement("tr");
-      tr.innerHTML=`
-        <td>${ev.title}<div class="muted">${ev.city.toUpperCase()}</div></td>
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(ev.title)}<div class="muted">${(ev.city || "").toUpperCase()}</div></td>
         <td>${fmt(ev.start)}</td>
         <td>${evSold}</td>
         <td>${money(evRev)}</td>
         <td><button class="btn btn-ghost" data-open="${ev.id}">Ava</button></td>
       `;
-      tr.querySelector("button").onclick=()=>location.hash=`#event-${ev.id}`;
+      tr.querySelector("button").onclick = () => (location.hash = `#event-${ev.id}`);
       tbody.appendChild(tr);
     });
 };
 
 /* ========================= ROUTER ========================= */
-const route=()=>{
-  const h=(location.hash||"#home").replace("#","");
+const route = async () => {
+  const h = (location.hash || "#home").replace("#", "");
 
-  if(h==="home" || h==="events" || h===""){
+  if (h === "home" || h === "events" || h === "") {
     show("home");
     list();
     return;
   }
 
-  if(h.startsWith("event-")){
-    const id=h.replace("event-","");
-    selectedEventId=id;
-    const ev=data.events.find(e=>e.id===id);
-    if(!ev){location.hash="#home";return;}
+  if (h.startsWith("event-")) {
+    const id = h.replace("event-", "");
+    selectedEventId = id;
+    const ev = data.events.find((e) => e.id === id);
+    if (!ev) { location.hash = "#home"; return; }
     show("event");
     renderEvent(ev);
     return;
   }
 
-  if(h==="checkout"){
-    if(!cart){toast("Vali enne pilet."); location.hash="#home"; return;}
+  if (h === "checkout") {
+    if (!cart) { toast("Vali enne pilet."); location.hash = "#home"; return; }
     show("checkout");
     renderCheckout();
     return;
   }
 
-  if(h==="org"){
-    if(!requireOrganizer()){ location.hash="#home"; return; }
+  // ✅ Montonio return (success)
+  if (h === "pay-success") {
+    show("home");
+    toast("Kontrollin makset…");
+    await finalizePendingOrder("montonio");
+    return;
+  }
+
+  // ✅ Montonio return (cancel)
+  if (h === "pay-cancel") {
+    show("checkout");
+    const pending = getPending();
+    if (pending) toast("Makse katkestati. Proovi uuesti.");
+    // ära kustuta pending automaatselt — kasutaja võib uuesti maksta
+    return;
+  }
+
+  if (h === "org") {
+    if (!requireOrganizer()) { location.hash = "#home"; return; }
     show("org");
     setOrgTab("orgProfile");
     loadProfileToForm();
@@ -745,7 +1037,7 @@ const route=()=>{
     return;
   }
 
-  location.hash="#home";
+  location.hash = "#home";
 };
 
 window.addEventListener("hashchange", route);
